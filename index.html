@@ -321,7 +321,18 @@ const DIS = {
   miracle:   {k:'trap', on:'death', s:'จะตาย: รอด HP 1 แล้วฟื้น 10', f(){ G.hp = 1; heal(10); }},
 };
 CARDS.forEach(c => c.dis = DIS[c.id] || null);
-const disText = c => !c.dis ? '' : c.dis.k === 'rec' ? `🔋 +${c.dis.n} พลังงาน` : `⏳ ${c.dis.s}`;
+// โบนัสพลังงานจากไพ่อาร์คานาเมื่อทิ้งการ์ดใบนี้ตอนนี้ (null นอกการต่อสู้)
+function discardBonuses(c) {
+  if (typeof C === 'undefined' || !C || !G || !G.mods) return {rec:0, first:0};
+  const m = G.mods;
+  return {rec: c.dis && c.dis.k === 'rec' && !C.recUsed ? m.recycleBonus : 0, first: C.discarded === 0 ? m.discardBonus : 0};
+}
+function disText(c) {
+  if (!c.dis) return '';
+  const b = discardBonuses(c), extra = b.rec + b.first;
+  if (c.dis.k === 'rec') return extra ? `🔋 +${c.dis.n + extra} พลังงาน <small>(${c.dis.n} + ${extra} จากไพ่)</small>` : `🔋 +${c.dis.n} พลังงาน`;
+  return `⏳ ${c.dis.s}${b.first ? ` <small>· +${b.first}⚡ จากไพ่</small>` : ''}`;
+}
 const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
 const POOL = {common:[], uncommon:[], rare:[]};
 CARDS.forEach(c => { if (POOL[c.rar]) POOL[c.rar].push(c.id); });
@@ -779,16 +790,17 @@ function discardCard(i) {
   if (c.dis && c.dis.k === 'trap' && C.traps.length >= TRAP_LIMIT + m.trapSlots) {
     C.sel = null; render(); toast(`วางกับดักได้สูงสุด ${TRAP_LIMIT + m.trapSlots} อัน`); return;
   }
+  const b = discardBonuses(c);
   C.hand.splice(i, 1); C.sel = null;
   C.discard.push(card);
   if (c.dis && c.dis.k === 'rec') {
-    gainE(c.dis.n + (!C.recUsed ? m.recycleBonus : 0));
+    gainE(c.dis.n + b.rec);
     C.recUsed = true;
   } else if (c.dis && c.dis.k === 'trap') {
     C.traps.push({id:c.id, on:c.dis.on});
     fx('player', `⏳ วางกับดัก`, '#cfe3ff');
   }
-  if (C.discarded === 0 && m.discardBonus) gainE(m.discardBonus);
+  if (b.first) gainE(b.first);
   C.discarded++;
   render();
 }
