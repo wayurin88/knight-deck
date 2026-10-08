@@ -230,6 +230,7 @@ button.arow{color:var(--txt);text-align:left}
 .pr-target{position:absolute;inset:67px;border:5px solid #ffe27a;border-radius:50%;box-shadow:0 0 14px #ffe27a}
 .pr-ring{position:absolute;inset:0;border:5px solid #fff;border-radius:50%;animation:prshrink var(--T) linear forwards}
 @keyframes prshrink{from{transform:scale(1);opacity:.45}to{transform:scale(.33);opacity:1}}
+.tarot .pe{margin-top:3px;color:#9fe0ff;font-size:9.5px;line-height:1.3}
 .pr-txt{text-align:center;line-height:1.6;font-size:16px;text-shadow:0 2px 4px #000}
 .ultbtn{--ec:#ffd25a;flex:1;position:relative;overflow:hidden;background:rgba(0,0,0,.5);border:2px solid var(--ec);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;line-height:1.25;text-align:center;color:var(--txt)}
 .ultbtn small{display:block;font-weight:400;font-size:11px;opacity:.85}
@@ -685,12 +686,12 @@ const REACT = {
 };
 const reactKey = (a, b) => [a, b].sort().join('+');
 const ENEMIES = {
-  slime:    {name:'สไลม์กรด', art:'🟢', wk:1, bk:12, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
-  goblin:   {name:'ก็อบลินโจร', art:'👺', wk:3, bk:12, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
-  skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:2, bk:14, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
-  orc:      {name:'ออร์คคลั่ง', art:'👹', wk:0, bk:16, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
-  darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', wk:2, bk:18, hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
-  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:0, bk:24, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
+  slime:    {name:'สไลม์กรด', art:'🟢', wk:1, bk:12, rh:{T:1500, seq:[1]}, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
+  goblin:   {name:'ก็อบลินโจร', art:'👺', wk:3, bk:12, rh:{T:1150, seq:[1, .8]}, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
+  skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:2, bk:14, rh:{T:1250, seq:[1, .9]}, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
+  orc:      {name:'ออร์คคลั่ง', art:'👹', wk:0, bk:16, rh:{T:1100, seq:[1.25, .75]}, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
+  darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', wk:2, bk:18, rh:{T:1000, seq:[1, .8, 1.2]}, hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
+  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:0, bk:24, rh:{T:1050, seq:[1, .7, 1.3, .85]}, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
 };
 
 // ================= หอคอย · เลเวล · ประตู =================
@@ -828,7 +829,7 @@ function tarotHTML(e, major = null, cls = '', attrs = '') {
     <div class="el">${EL[A.el].ic} ${EL[A.el].th}</div>
     ${e.rev ? '<div class="revtag">🔻 กลับหัว</div>' : ''}
     ${e.form === 2 ? '<div class="formtag">🔁 ร่างที่สอง</div>' : ''}
-    <div class="td">${A.major ? A.d(arcValue(A, e.rev, mult)) : `<b>${ROLE[A.role].ic} ${A.sk} · ⚡${A.cost}</b><br>${kitDesc(A, e.rev, mult, '<br>')}`}</div>
+    <div class="td">${A.major ? A.d(arcValue(A, e.rev, mult)) + `<div class="pe">${peText(A)}</div>` : `<b>${ROLE[A.role].ic} ${A.sk} · ⚡${A.cost}</b><br>${kitDesc(A, e.rev, mult, '<br>')}`}</div>
     ${e.rev ? `<div class="bad">⚠ ${badOf(A).d}</div>` : ''}
     ${syn ? '<div class="syn">✨ ธาตุตรงกับ Major<br>ผล +25%</div>' : ''}
     ${!A.major && major && major.id === WORLD ? '<div class="syn">🌍 The World ขยายผล</div>' : ''}
@@ -1286,20 +1287,54 @@ function endTurn() {
   setTimeout(enemyTurn, 450);
 }
 const enemyDmg = base => Math.floor((base + E.str) * (E.weak > 0 ? .75 : 1) * matchK());
+// เอฟเฟกต์ Major เมื่อปัดสำเร็จ (ปัดสมบูรณ์ = เต็ม · หลบ = ครึ่งหนึ่ง · Major กลับหัว ×1.4) · ไม่ผ่านระบบธาตุ/จุดอ่อน
+const EFX = {
+  counter:  {t:v => `สวนกลับ ดาเมจ ${v}`,                 f:n => hurtEnemy(n)},
+  counterIn:{t:() => 'สวนกลับ ดาเมจเท่ากับที่ศัตรูตีมา',    f:(n, c) => hurtEnemy(Math.round(c.incoming * c.k))},
+  devil:    {t:v => `สวนกลับ ดาเมจ ${v} (เสีย HP 2)`,       f:n => { hurtEnemy(n); G.hp = Math.max(1, G.hp - 2); fx('player', '-2', '#ff6b6b'); }},
+  pct:      {t:v => `ดาเมจ ${v}% ของ HP สูงสุดศัตรู`,       f:(n, c, v) => hurtEnemy(Math.max(1, Math.round(E.maxHp * v / 100 * c.k)))},
+  heal:     {t:v => `ฟื้น HP ${v}`,                         f:n => heal(n)},
+  healLow:  {t:v => `ฟื้น HP ${v} (ถ้า HP ต่ำกว่า 50% · ไม่งั้น 3)`, f:(n, c, v) => heal(G.hp < G.maxHp / 2 ? n : Math.max(1, Math.round(3 * c.k)))},
+  block:    {t:v => `ได้เกราะ ${v}`,                        f:n => { C.block += n; fx('player', `+${n} 🛡`, '#8fd0ff'); }},
+  charge:   {t:v => `ชาร์จพลังพิเศษ +${v}`,                 f:n => ultAdd(n)},
+  energy:   {t:v => `พลังงาน +${v}`,                        f:n => gainE(n)},
+  weak:     {t:v => `ศัตรูอ่อนแรง ${v}`,                    f:n => applyE('weak', n)},
+  vuln:     {t:v => `ศัตรูเปราะบาง ${v}`,                   f:n => applyE('vuln', n)},
+  brk:      {t:v => `เติมหลอด Break +${v}`,                 f:n => addBreak(n)},
+  gold:     {t:v => `ได้ทอง +${v}`,                         f:n => { G.gold += n; fx('player', `💰 +${n}`, '#ffd25a'); }},
+  freeNext: {t:() => 'ไพ่ใบถัดไปไม่เสียพลังงาน',            f:() => { C.freeLeft++; fx('player', '🆓 ไพ่ถัดไปฟรี', '#9fe0ff'); }},
+  refresh:  {t:() => 'ไพ่ที่ใช้แล้ว 1 ใบ กลับมาใช้ได้อีกครั้ง', f:() => { const u = C.kit.find(c => c.used); if (u) { u.used = false; fx('player', '🔁 ไพ่กลับมา', '#9fe0ff'); } }},
+  stain:    {t:() => 'ศัตรูได้ตราธาตุของ Major 1 ดวง',       f:() => { C.stains.push(ARC[G.arc.major.id].el); if (C.stains.length > 2) C.stains.shift(); }},
+  rand:     {t:() => 'สุ่ม 1 อย่าง: พลังงาน +1 / เกราะ 6 / ฟื้น HP 4 / ดาเมจ 6', f:(n, c) => pick([() => gainE(1), () => EFX.block.f(Math.round(6 * c.k)), () => heal(Math.round(4 * c.k)), () => hurtEnemy(Math.round(6 * c.k))])()},
+};
+const PE_EL = {fire:['counter', 8], water:['heal', 4], air:['charge', 2], earth:['block', 6]};      // ค่าเริ่มต้นตามธาตุ
+const PE_MAJOR = {M0:['rand', 0], M1:['charge', 3], M2:['weak', 1], M3:['heal', 6], M4:['block', 8], M5:['freeNext', 0], M7:['counter', 10], M9:['energy', 2],
+  M10:['gold', 10], M11:['counterIn', 0], M12:['vuln', 1], M13:['pct', 5], M14:['heal', 4], M15:['devil', 12], M16:['brk', 3], M17:['healLow', 8],
+  M18:['weak', 2], M19:['charge', 3], M20:['refresh', 0], M21:['stain', 0]};
+const peOf = M => PE_MAJOR[M.id] || PE_EL[M.el];
+const peText = M => { const [k, v] = peOf(M); return `🛡 ปัดสำเร็จ: ${EFX[k].t(v)}`; };
+function parryEffect(level, incoming) {
+  if (level <= 0) return;
+  const major = G.arc.major, M = ARC[major.id], [kind, v] = peOf(M);
+  const k = level * (major.rev ? REV_K : 1), n = Math.max(1, Math.round(v * k));
+  fx('player', `🛡 ${M.en}`, '#ffe27a');
+  EFX[kind].f(n, {k, incoming}, v);
+  ST().pe = (ST().pe || 0) + 1;
+}
 // ปัด/หลบตามจังหวะ: วงแหวนหดเข้ากรอบ แตะตอนตรงกรอบ · ปิดได้ที่หน้าแรก (ปุ่ม 🛡 ตั้งรับใช้ได้เสมอ)
 const PARRY = {T:1200, perfect:150, good:340};
 const parryOn = () => SAVE.parry !== false;
 function toggleParry() { SAVE.parry = !parryOn(); persist(); render(); }
-function startParry(it, done) {
-  const ov = document.createElement('div');
-  ov.className = 'parry'; ov.style.setProperty('--T', PARRY.T + 'ms');
+const hitTime = (E, i) => Math.max(650, Math.round(E.rh.T * E.rh.seq[i % E.rh.seq.length]));
+function parryRing(ov, it, i, n, done) {                       // วงแหวน 1 ครั้ง (ศัตรูตีหลายครั้ง = หลายจังหวะ ความเร็วต่างกันตามศัตรู)
+  const T = hitTime(E, i);
+  ov.style.setProperty('--T', T + 'ms');
   ov.innerHTML = `<div class="pr-box"><div class="pr-target"></div><div class="pr-ring"></div></div>
-    <div class="pr-txt">${E.name} โจมตี ${intentParts(it, E.str, E.weak)}<br><b>แตะเมื่อวงแหวนตรงกรอบ!</b></div>`;
-  app.appendChild(ov);
+    <div class="pr-txt">${E.name} โจมตี ${n > 1 ? `ครั้งที่ ${i + 1}/${n}` : ''}<br><b>แตะเมื่อวงแหวนตรงกรอบ!</b></div>`;
   const t0 = Date.now(); let fin = false;
-  const end = grade => { if (fin) return; fin = true; ov.remove(); done(grade); };
-  ov.onpointerdown = () => { const e = Math.abs(Date.now() - t0 - PARRY.T); end(e <= PARRY.perfect ? 'perfect' : e <= PARRY.good ? 'good' : 'miss'); };
-  setTimeout(() => end('miss'), PARRY.T + PARRY.good + 80);
+  const end = grade => { if (fin) return; fin = true; ov.onpointerdown = null; done(grade); };
+  ov.onpointerdown = () => { const e = Math.abs(Date.now() - t0 - T); end(e <= PARRY.perfect ? 'perfect' : e <= PARRY.good ? 'good' : 'miss'); };
+  setTimeout(() => end('miss'), T + PARRY.good + 80);
 }
 function guard() {                                         // ตั้งรับ: ไม่ต้องจับจังหวะ ลดดาเมจเทิร์นนี้ครึ่งหนึ่ง แลกพลังงาน 1
   if (C.busy) return;
@@ -1321,35 +1356,52 @@ function enemyTurn() {
   if (it.block) { E.block += it.block; fx('enemy', `+${it.block} 🛡`, '#8fd0ff'); }
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
   if (!it.atk) return enemyFinish();
-  const go = grade => {
-    if (parryOn() && ST().parry[grade] !== undefined) ST().parry[grade]++;
-    C.parryK = grade === 'perfect' ? 0.25 : grade === 'good' ? 0.6 : 1;
-    if (grade === 'perfect') { gainE(1); ultAdd(2); fx('player', '✨ ปัดสมบูรณ์!', '#ffe27a'); }
-    else if (grade === 'good') fx('player', '👍 หลบ!', '#9fe0ff');
-    else if (grade === 'miss' && parryOn()) fx('player', 'พลาด', '#aaa');
-    enemyHits(it); enemyFinish();
+  const n = it.hits || 1, useParry = parryOn(), grades = [];
+  let incoming = 0, rewarded = false, ov = null;
+  if (G.mods.pinHit && (E.turn + 1) % G.mods.pinEvery === 0) hurtEnemy(G.mods.pinHit);
+  if (useParry) { ov = document.createElement('div'); ov.className = 'parry'; app.appendChild(ov); render(); app.appendChild(ov); }
+  const all = () => {
+    if (ov) ov.remove();
+    let level = 0;
+    if (useParry) { const sc = grades.reduce((a, g) => a + (g === 'perfect' ? 1 : g === 'good' ? .5 : 0), 0) / n; level = sc >= .85 ? 1 : sc >= .4 ? .5 : 0; }
+    else if (C.guard) level = .5;                              // ปิดโหมดปัด: ตั้งรับสำเร็จ = หลบ (ครึ่งหนึ่ง)
+    if (G.hp > 0 && E.hp > 0) parryEffect(level, incoming);
+    enemyFinish();
   };
-  if (parryOn()) { render(); startParry(it, go); } else go('none');
+  const hit = i => {
+    const after = grade => {
+      grades.push(grade);
+      C.parryK = grade === 'perfect' ? 0.25 : grade === 'good' ? 0.6 : 1;
+      if (useParry) {
+        if (grade === 'perfect') { fx('player', '✨ ปัดสมบูรณ์!', '#ffe27a'); if (!rewarded) { rewarded = true; gainE(1); ultAdd(2); } }
+        else if (grade === 'good') fx('player', '👍 หลบ!', '#9fe0ff');
+        else fx('player', 'พลาด', '#aaa');
+        if (ST().parry[grade] !== undefined) ST().parry[grade]++;
+      }
+      incoming += enemyHit(it);
+      if (G.hp <= 0 || E.hp <= 0 || i + 1 >= n) return all();
+      if (useParry) { render(); app.appendChild(ov); setTimeout(() => hit(i + 1), 320); } else hit(i + 1);
+    };
+    if (useParry) parryRing(ov, it, i, n, after); else after('none');
+  };
+  hit(0);
 }
-function enemyHits(it) {
-  const m = G.mods;
-  if (m.pinHit && (E.turn + 1) % m.pinEvery === 0) hurtEnemy(m.pinHit);
-  for (let h = 0; h < (it.hits || 1); h++) {
-    let d = Math.floor(enemyDmg(it.atk) * (C.guard ? 0.5 : 1) * (C.parryK || 1));
-    if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
-    const b = Math.min(C.block, d); C.block -= b; d -= b;
-    if (m.dmgCap) d = Math.min(d, m.dmgCap);
-    G.hp = Math.max(0, G.hp - d);
-    fx('player', d > 0 ? `-${d}` : 'ป้องกัน', d > 0 ? '#ff6b6b' : '#9fc0dd');
-    if (d > 0) C.shakeP = true;
-    if (C.thorns) hurtEnemy(C.thorns);
-    if (C.reflectT) hurtEnemy(C.reflectT);
-    if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
-    if (G.hp <= 0 && m.revive && !G.revived) {
-      G.revived = true; G.hp = Math.round(G.maxHp * m.revive); fx('player', '📯 ฟื้นคืนชีพ!', '#ffe27a');
-    }
-    if (G.hp <= 0 || E.hp <= 0) break;
+function enemyHit(it) {                                        // ศัตรูตี 1 ครั้ง · คืนดาเมจดิบ (ก่อนปัด/เกราะ) ไว้ให้ Justice
+  const m = G.mods, raw = Math.floor(enemyDmg(it.atk) * (C.guard ? 0.5 : 1));
+  let d = Math.floor(raw * (C.parryK || 1));
+  if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
+  const b = Math.min(C.block, d); C.block -= b; d -= b;
+  if (m.dmgCap) d = Math.min(d, m.dmgCap);
+  G.hp = Math.max(0, G.hp - d);
+  fx('player', d > 0 ? `-${d}` : 'ป้องกัน', d > 0 ? '#ff6b6b' : '#9fc0dd');
+  if (d > 0) C.shakeP = true;
+  if (C.thorns) hurtEnemy(C.thorns);
+  if (C.reflectT) hurtEnemy(C.reflectT);
+  if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
+  if (G.hp <= 0 && m.revive && !G.revived) {
+    G.revived = true; G.hp = Math.round(G.maxHp * m.revive); fx('player', '📯 ฟื้นคืนชีพ!', '#ffe27a');
   }
+  return raw;
 }
 function enemyFinish() {
   E.turn++;
@@ -1451,7 +1503,7 @@ function arcRow(A) {
     ${ROLE[A.role].ic} ${ROLE[A.role].th} · ⚡${A.cost} · <b>${A.sk}</b><br>${kitDesc(A, false)}<br>
     <small class="bad">🔻 กลับหัว (×${REV_K}): ${kitDesc(A, true)} · ⚠ ${badOf(A).d}</small></span></div>`;
   return `<div class="arow" style="--ec:${EL[A.el].c}"><span class="ai">${A.icon}</span><span>${head}
-    ${A.d(A.v)}<br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${badOf(A).d}</small><br>
+    ${A.d(A.v)}<br><small>${peText(A)}</small><br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${badOf(A).d}</small><br>
     <small>🌟 ท่าไม้ตาย: <b>${ULTS[A.el].name}</b> — ${ULTS[A.el].d(1)}</small></span></div>`;
 }
 // ================= ตั้งค่า · สถิติ · สำรอง/นำเข้าเซฟ =================
@@ -1599,6 +1651,8 @@ function showGuide() {
     <h3>🎯 ปัดตามจังหวะและตั้งรับ</h3>
     <ul><li>ก่อนศัตรูโจมตี จะมี <b>วงแหวนหดเข้ากรอบ</b> แตะหน้าจอตอนวงแหวนตรงกรอบ</li>
     <li>✨ <b>ปัดสมบูรณ์</b> ดาเมจ −75% + พลังงาน +1 + ชาร์จพลังพิเศษ +2 · 👍 <b>หลบ</b> ดาเมจ −40% · พลาด = ดาเมจเต็ม</li>
+    <li>ศัตรูที่ตีหลายครั้ง = วงแหวนหลายรอบ (ศัตรูแต่ละตัวมีจังหวะและความเร็วต่างกัน บอสเร็วและเปลี่ยนจังหวะที่สุด) แต่ละครั้งตัดสินดาเมจแยกกัน</li>
+    <li><b>Major แต่ละใบมีเอฟเฟกต์เมื่อปัดสำเร็จ</b> (ดูบรรทัด 🛡 บนไพ่) ปัดสมบูรณ์ทุกครั้งในท่า = เต็ม · ปัดได้ประมาณครึ่ง = ครึ่งหนึ่ง · ได้ 1 ครั้งต่อท่าศัตรู · เมื่อปิดโหมดปัด การตั้งรับ 🛡 ที่ถูกโจมตี นับเป็นครึ่งหนึ่ง</li>
     <li>ไม่ถนัดจับจังหวะ ปิดได้ที่หน้าแรก (🎯 ปัดตามจังหวะ) หรือใช้ปุ่ม <b>🛡 ตั้งรับ</b> (เสีย 1⚡ ลดดาเมจเทิร์นนั้น 50% ไม่ต้องจับจังหวะ ใช้ได้ทั้งตอนเปิด/ปิดโหมดปัด)</li></ul>
 
     <h3>🌟 พลังพิเศษและท่าไม้ตาย</h3>
@@ -1655,7 +1709,7 @@ function showGuide() {
 function showMyArcana() {
   const a = G.arc, M = ARC[a.major.id], u = ULTS[M.el];
   openModal(`<h2>🔮 ไพ่ประจำรอบของคุณ</h2>
-    <div class="arow" style="--ec:${EL[M.el].c}"><span class="ai">${M.icon}</span><span><b>${M.en}</b>${a.major.rev ? ' 🔻' : ''}<br>${eff(a.major).d(arcValue(eff(a.major), a.major.rev))}<br>
+    <div class="arow" style="--ec:${EL[M.el].c}"><span class="ai">${M.icon}</span><span><b>${M.en}</b>${a.major.rev ? ' 🔻' : ''}<br>${eff(a.major).d(arcValue(eff(a.major), a.major.rev))}<br><small>${peText(M)}</small><br>
       <small>🌟 ท่าไม้ตาย: <b>${u.name}</b> — ${u.d(a.major.rev ? 1.3 : 1)}</small></span></div>
     ${a.minors.map(e => { const A = ARC[e.id]; return `<div class="arow" style="--ec:${EL[A.el].c}"><span class="ai">${ROLE[A.role].ic}</span><span>
       <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost}${e.rev ? ' · 🔻 กลับหัว' : ''}</small><br>${kitDesc(A, e.rev, minorMult(a.major, e))}</span></div>`; }).join('')}
@@ -1699,7 +1753,7 @@ function pickMajor() {
   openModal(`<h2>✦ เลือกไพ่หลัก (Major)</h2>
     <div class="muted">มี ${MAJORS.filter(M => SAVE.owned[M.id]).length}/22 ใบ · ไพ่ที่ยังไม่มีสุ่มได้ที่วิหารดวงดาว</div>
     ${MAJORS.filter(M => SAVE.owned[M.id]).map(A => `<button class="arow ${A.id === cur ? 'cur' : ''}" style="--ec:${EL[A.el].c}" onclick="equipMajorId('${A.id}')">
-      <span class="ai">${A.icon}</span><span><b>${A.no} · ${A.en}</b> — ${A.th} <small>${EL[A.el].ic} ${EL[A.el].th} · ×${copies(A.id)}</small><br>${A.d(A.v)}</span></button>`).join('')}
+      <span class="ai">${A.icon}</span><span><b>${A.no} · ${A.en}</b> — ${A.th} <small>${EL[A.el].ic} ${EL[A.el].th} · ×${copies(A.id)}</small><br>${A.d(A.v)}<br><small>${peText(A)}</small></span></button>`).join('')}
     <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
 }
 // สรุปพลังรวมที่ใส่อยู่ (ไพ่หลัก + เครื่องราง + สถานะ) · Minor สุ่มตอนเข้ารอบจึงยังไม่นับ
@@ -1787,7 +1841,7 @@ const SCREENS = {
     return `<div class="screen" style="justify-content:center">
       <h2>🔮 ชุดไพ่ประจำรอบ</h2>
       <div class="arow" style="--ec:${EL[M.el].c}"><span class="ai">${M.icon}</span><span><b>${M.en}</b> — ${M.th}${AR.major.rev ? ' 🔻' : ''} <small>${EL[M.el].ic} ${EL[M.el].th}</small><br>
-        ${eff(AR.major).d(arcValue(eff(AR.major), AR.major.rev))}<br><small>🌟 ${u.name}: ${u.d(AR.major.rev ? 1.3 : 1)}</small></span></div>
+        ${eff(AR.major).d(arcValue(eff(AR.major), AR.major.rev))}<br><small>${peText(M)}</small><br><small>🌟 ${u.name}: ${u.d(AR.major.rev ? 1.3 : 1)}</small></span></div>
       ${AR.minors.map(e => { const A = ARC[e.id]; return `<div class="arow" style="--ec:${EL[A.el].c}"><span class="ai">${ROLE[A.role].ic}</span><span>
         <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost}${e.rev ? ' · 🔻' : ''}${A.el === M.el ? ' · ✨ธาตุตรง +25%' : ''}</small><br>${kitDesc(A, e.rev, minorMult(AR.major, e))}</span></div>`; }).join('')}
       ${empty ? `<div class="box" style="border:1px solid #ff9a4a;text-align:center">⚠ ยังมีช่องว่าง ${empty} ช่อง · ไปติดตั้งที่หน้า 🧙 ตัวละคร</div>` : ''}
