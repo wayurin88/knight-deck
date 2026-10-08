@@ -207,6 +207,7 @@ button.arow{color:var(--txt);text-align:left}
 const RAR = {starter:'พื้นฐาน', common:'ธรรมดา', uncommon:'หายาก', rare:'ตำนาน'};
 const RCOLOR = {starter:'#aaa', common:'#9fc0dd', uncommon:'#b07cf0', rare:'#f2c443'};
 const TYPE = {atk:'โจมตี', skill:'ทักษะ', power:'พลัง'};
+let BASE_HP = 95;                                          // HP เริ่มต้นของอัศวิน (ปรับจาก 80 เพื่อชดเชยที่ Minor ถูกปรับสมดุลให้อ่อนลง)
 const MAXE = 5, HAND = 5, HAND_MAX = 7, PLAY_LIMIT = 3, REV_AT = 4, TRAP_LIMIT = 2;      // REV_AT = จำนวนไพ่ซ้ำที่ปลดล็อกการกลับหัว
 let REGEN = 1;   // พลังงานที่ฟื้นทุกต้นเทิร์น
 
@@ -218,6 +219,7 @@ function calcDmg(n, mult = 1) {
   const m = G.mods;
   let d = n + C.str * mult;
   if (C.atkCount === 0) d += m.firstAtk;
+  if (C.atkCount === 0 && m.wandBonus && C.turn % m.wandEvery === 0) d += m.wandBonus;   // ไม้เท้า: ทุก k เทิร์น
   d += m.allAtk;
   d *= 1 + m.dmgPct;
   if (C.played === 1) d *= 1 + m.secondMult;
@@ -384,9 +386,9 @@ const EL = {
 };
 // ข้อเสียเมื่อไพ่ออกมา "กลับหัว"
 const BAD = {
-  hp:     {d:'HP สูงสุด −10', f:m=>m.maxHp-=10},
-  ehp:    {d:'ศัตรู HP +15%', f:m=>m.enemyHpPct+=.15},
-  estr:   {d:'ศัตรูเริ่มการต่อสู้มีพลัง +1', f:m=>m.enemyStr+=1},
+  hp:     {d:'HP สูงสุด −8', f:m=>m.maxHp-=8},
+  ehp:    {d:'ศัตรู HP +8%', f:m=>m.enemyHpPct+=.08},
+  estr:   {d:'ศัตรูเริ่มการต่อสู้ได้เกราะ 8', f:m=>m.enemyBlock+=8},
   shop:   {d:'ราคาร้านค้า +30%', f:m=>m.shopPct+=.3},
   nogold: {d:'เริ่มรอบไม่มีทอง', f:m=>m.goldStart-=999},
   e1:     {d:'เริ่มการต่อสู้เกจ −1', f:m=>m.startGauge-=1},
@@ -397,6 +399,14 @@ const BAD = {
   rest:   {d:'กองไฟฟื้น HP แค่ครึ่งเดียว', f:m=>m.restMult*=.5},
   drain:  {d:'เสีย HP เพิ่มอีก 1 ทุกเทิร์น', f:m=>m.drain+=1},
 };
+// ข้อเสียตอนกลับหัวของ Minor (ไพ่รอง) เบากว่า Major ครึ่งหนึ่ง
+const BADM = {
+  hp:  {d:'HP สูงสุด −4', f:m=>m.maxHp-=4},
+  ehp: {d:'ศัตรู HP +4%', f:m=>m.enemyHpPct+=.04},
+  blk: {d:'ศัตรู HP +5%', f:m=>m.enemyHpPct+=.05},       // (เดิมเกราะ −10% / ดาเมจ −5% ถูกปัดทิ้งทีละ 1 ต่อครั้ง ทำให้โหดเกินจริง)
+  dmg: {d:'HP สูงสุด −5', f:m=>m.maxHp-=5},
+};
+const badOf = A => (A.major ? BAD : BADM)[A.bad];
 const MAJORS = [
   {no:'0',    en:'The Fool',          th:'คนเขลา',        el:'air',   icon:'🤹', v:1,   rv:2,   bad:'nogold', d:v=>`เริ่มรอบด้วยการ์ดตำนานสุ่ม ${v} ใบ · เริ่มรอบได้ทอง +30 · เริ่มการต่อสู้เกราะ 10`, f:(m,v)=>{m.startRares+=v; m.goldStart+=30; m.startBlock+=10;}},
   {no:'I',    en:'The Magician',      th:'นักเวท',        el:'air',   icon:'🎩', v:1,   rv:2,   bad:'hp',     d:v=>`เกจพลังงานสูงสุด +${v} · เริ่มการต่อสู้เกราะ 5`, f:(m,v)=>{m.maxGauge+=v; m.startBlock+=5;}},
@@ -423,43 +433,52 @@ const MAJORS = [
 ].map((M, i) => ({...M, id:'M' + i, major:true}));
 const WORLD = 'M21';
 
-// Minor: ไพ่ตัวเลข Ace–10 ผลเดียวกันทั้งชุด แรงขึ้นตามเลข · ไพ่ราชสำนัก 4 ใบมีผลเฉพาะ
+// Minor: ไพ่ตัวเลข Ace–10 ผลเดียวกันทั้งชุด แรงขึ้นตามเลข (ปรับสมดุลแล้ว: Ace ≈ +2~4 · Ten ≈ +9~13 จุดอัตราชนะ) · ไพ่ราชสำนัก 4 ใบมีผลเฉพาะ
+// ไม้เท้า: โจมตีใบแรกของเทิร์น +b ทุก k เทิร์น (เล็กลงมาก เพราะ +1 ทุกเทิร์นเดียวให้ +13 จุดแล้ว)
+const WAND_P = [null, [1, 6], [1, 5], [1, 4], [1, 3], [1, 2], [2, 3], [1, 1], [3, 2]];   // ระดับ 1-8 → [ดาเมจ, ทุกกี่เทิร์น] (ระดับ 8 ได้จากไพ่กลับหัวเท่านั้น)
+const wandOf = v => WAND_P[Math.max(1, Math.min(8, Math.round(v)))];
+const SWORD_V = [0, 2, 3, 4, 4, 5, 6, 7, 8, 8, 9];                                  // ดาบ: ดาเมจตอนเริ่มรบ ตามเลขไพ่
 const SUITS = {
-  wands:     {en:'Wands', th:'ไม้เท้า', icon:'🪄', el:'fire',  bad:'blk', step:1,  d:v=>`การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${v}`, f:(m,v)=>m.firstAtk+=v},
-  cups:      {en:'Cups', th:'ถ้วย', icon:'🏆', el:'water', bad:'dmg', step:1,  d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
-  swords:    {en:'Swords', th:'ดาบ', icon:'🗡️', el:'air',   bad:'hp',  step:2,  d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
-  pentacles: {en:'Pentacles', th:'เหรียญ', icon:'🪙', el:'earth', bad:'ehp', step:12, d:v=>`เริ่มรอบได้ทอง +${v}`, f:(m,v)=>m.goldStart+=v},
+  wands:     {en:'Wands', th:'ไม้เท้า', icon:'🪄', el:'fire',  bad:'blk', pip:r=>Math.ceil(r * 0.7), rvf:v=>Math.min(8, Math.round(v * 1.6)),
+              d:v=>{ const [b, k] = wandOf(v); return `การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${b}${k > 1 ? ` (ทุก ${k} เทิร์น)` : ' ทุกเทิร์น'}`; },
+              f:(m,v)=>{ const [b, k] = wandOf(v); m.wandBonus = b; m.wandEvery = k; }},
+  cups:      {en:'Cups', th:'ถ้วย', icon:'🏆', el:'water', bad:'dmg', pip:r=>r + 1,
+              d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
+  swords:    {en:'Swords', th:'ดาบ', icon:'🗡️', el:'air',   bad:'hp',  pip:r=>SWORD_V[r],
+              d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
+  pentacles: {en:'Pentacles', th:'เหรียญ', icon:'🪙', el:'earth', bad:'ehp', pip:r=>Math.round(2 + 1.5 * r),
+              d:v=>`เริ่มการต่อสู้เกราะ ${v} · เริ่มรอบได้ทอง +${v * 6}`, f:(m,v)=>{ m.startBlock += v; m.goldStart += v * 6; }},
 };
 const COURTS = {
   wands: [
     {en:'Page', th:'เด็กรับใช้', v:1, rv:2, d:v=>`เริ่มการต่อสู้ได้พลัง +${v}`, f:(m,v)=>m.startStr+=v},
-    {en:'Knight', th:'อัศวิน', v:.15, rv:.25, d:v=>`ดาเมจ +${pct(v)}`, f:(m,v)=>m.dmgPct+=v},
-    {en:'Queen', th:'ราชินี', v:3, rv:5, d:v=>`เริ่มการต่อสู้มีหนาม ${v}`, f:(m,v)=>m.startThorns+=v},
-    {en:'King', th:'ราชา', v:.25, rv:.4, d:v=>`ศัตรูเปราะบางรับดาเมจเพิ่มอีก +${pct(v)}`, f:(m,v)=>m.vulnBonus+=v}],
+    {en:'Knight', th:'อัศวิน', v:.18, rv:.28, d:v=>`ดาเมจ +${pct(v)}`, f:(m,v)=>m.dmgPct+=v},
+    {en:'Queen', th:'ราชินี', v:3, rv:5, d:v=>`ทุก 3 เทิร์นของศัตรู ถ้าศัตรูโจมตี สะท้อนดาเมจ ${v}`, f:(m,v)=>{ m.pinHit += v; m.pinEvery = 3; }},
+    {en:'King', th:'ราชา', v:.4, rv:.6, d:v=>`ศัตรูเปราะบางรับดาเมจเพิ่มอีก +${pct(v)}`, f:(m,v)=>m.vulnBonus+=v}],
   cups: [
-    {en:'Page', th:'เด็กรับใช้', v:1, rv:2, d:v=>`ทุกครั้งที่ได้เกราะ +${v}`, f:(m,v)=>m.blockFlat+=v},
+    {en:'Page', th:'เด็กรับใช้', v:1, rv:2, d:v=>`จบเทิร์นเลขคู่ของคุณ ฟื้น HP ${v}`, f:(m,v)=>m.turnEndHeal+=v},
     {en:'Knight', th:'อัศวิน', v:6, rv:10, d:v=>`เริ่มการต่อสู้ได้เกราะ ${v}`, f:(m,v)=>m.startBlock+=v},
     {en:'Queen', th:'ราชินี', v:10, rv:16, d:v=>`HP สูงสุด +${v}`, f:(m,v)=>m.maxHp+=v},
-    {en:'King', th:'ราชา', v:.15, rv:.25, d:v=>`เกราะ +${pct(v)}`, f:(m,v)=>m.blockPct+=v}],
+    {en:'King', th:'ราชา', v:.2, rv:.3, d:v=>`เกราะจากการ์ด +${pct(v)}`, f:(m,v)=>m.blockPct+=v}],
   swords: [
     {en:'Page', th:'เด็กรับใช้', v:2, rv:3, d:v=>`เทิร์นแรกจั่ว +${v}`, f:(m,v)=>m.turn1Draw+=v},
-    {en:'Knight', th:'อัศวิน', v:1, rv:2, d:v=>`ทิ้งการ์ด 🔋 ครั้งแรกของเทิร์น ได้พลังงานเพิ่ม +${v}`, f:(m,v)=>m.recycleBonus+=v},
-    {en:'Queen', th:'ราชินี', v:1, rv:2, d:v=>`ใช้การ์ดราคา 0: จั่ว 1 (สูงสุด ${v} ครั้ง/เทิร์น)`, f:(m,v)=>m.zeroDraw+=v},
-    {en:'King', th:'ราชา', v:1, rv:2, d:v=>`ทุก 3 เทิร์น พลังงาน +${v}`, f:(m,v)=>m.energyEvery3+=v}],
+    {en:'Knight', th:'อัศวิน', v:6, rv:4, d:v=>`ทุก ${v} เทิร์น เกจพลังงาน +1`, f:(m,v)=>m.ringEvery=m.ringEvery?Math.min(m.ringEvery,v):v},
+    {en:'Queen', th:'ราชินี', v:1, rv:2, d:v=>`ทุก 3 เทิร์น จั่ว +${v}`, f:(m,v)=>m.drawEvery3+=v},
+    {en:'King', th:'ราชา', v:4, rv:3, d:v=>`ทุก ${v} เทิร์น เกจพลังงาน +1`, f:(m,v)=>m.ringEvery=m.ringEvery?Math.min(m.ringEvery,v):v}],
   pentacles: [
-    {en:'Page', th:'เด็กรับใช้', v:1, rv:2, d:v=>`รางวัลการ์ด +${v} ตัวเลือก`, f:(m,v)=>m.rewardChoices+=v},
-    {en:'Knight', th:'อัศวิน', v:5, rv:8, d:v=>`โอกาสการ์ดตำนาน +${v}%`, f:(m,v)=>m.rareChance+=v},
-    {en:'Queen', th:'ราชินี', v:.2, rv:.3, d:v=>`ราคาร้านค้า −${pct(v)}`, f:(m,v)=>m.shopPct-=v},
-    {en:'King', th:'ราชา', v:.5, rv:.8, d:v=>`ทองจากการต่อสู้ +${pct(v)}`, f:(m,v)=>m.goldMult+=v}],
+    {en:'Page', th:'เด็กรับใช้', v:1, rv:2, d:v=>`รางวัลการ์ด +${v} ตัวเลือก · เริ่มการต่อสู้เกราะ ${3 * v}`, f:(m,v)=>{ m.rewardChoices += v; m.startBlock += 3 * v; }},
+    {en:'Knight', th:'อัศวิน', v:5, rv:8, d:v=>`โอกาสการ์ดตำนาน +${v}% · HP สูงสุด +${Math.round(v * 1.2)}`, f:(m,v)=>{ m.rareChance += v; m.maxHp += Math.round(v * 1.2); }},
+    {en:'Queen', th:'ราชินี', v:.2, rv:.3, d:v=>`ราคาร้านค้า −${pct(v)} · ฟื้น HP ${Math.round(v * 10)} หลังชนะ`, f:(m,v)=>{ m.shopPct -= v; m.healWin += Math.round(v * 10); }},
+    {en:'King', th:'ราชา', v:.5, rv:.8, d:v=>`ทองจากการต่อสู้ +${pct(v)} · เริ่มการต่อสู้เกราะ ${Math.round(v * 16)}`, f:(m,v)=>{ m.goldMult += v; m.startBlock += Math.round(v * 16); }}],
 };
 const RANK_EN = ['Ace','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
 const MINORS = [];
 for (const [s, S] of Object.entries(SUITS)) {
   for (let r = 1; r <= 10; r++) {
-    const v = r * S.step;
+    const v = S.pip(r);
     // เลขสูงแรงกว่า จึงออกยากกว่า (Ace น้ำหนัก 11 → Ten น้ำหนัก 2)
     MINORS.push({id:`${s}-${r}`, suit:s, rank:r, no:r === 1 ? 'A' : String(r), en:`${RANK_EN[r-1]} of ${S.en}`,
-      th:`${S.th} ${r === 1 ? 'เอซ' : r}`, icon:S.icon, el:S.el, bad:S.bad, v, rv:Math.round(v * 1.6), d:S.d, f:S.f, w:12 - r});
+      th:`${S.th} ${r === 1 ? 'เอซ' : r}`, icon:S.icon, el:S.el, bad:S.bad, v, rv:S.rvf ? S.rvf(v) : Math.round(v * 1.6), d:S.d, f:S.f, w:12 - r});
   }
   COURTS[s].forEach((c, k) => MINORS.push({id:`${s}-${11 + k}`, suit:s, rank:11 + k, no:c.en.toUpperCase(), en:`${c.en} of ${S.en}`,
     th:`${c.th}แห่ง${S.th}`, icon:S.icon, el:S.el, bad:S.bad, v:c.v, rv:c.rv, d:c.d, f:c.f, w:3, court:true}));
@@ -472,7 +491,7 @@ const ALTS = {
   M4:        {v:3, rv:5, d:v=>`ทุกเทิร์นได้เกราะ ${v}`, f:(m,v)=>m.turnBlock+=v},               // The Emperor
   M16:       {v:3, rv:5, d:v=>`ทุกเทิร์น ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.turnEnemyDmg+=v},     // The Tower
   M18:       {v:2, rv:3, d:v=>`ศัตรูเริ่มการต่อสู้ด้วยเปราะบาง ${v}`, f:(m,v)=>m.startEnemyVuln+=v}, // The Moon
-  'wands-5': {v:1, rv:2, d:v=>`การ์ดโจมตีทุกใบ ดาเมจ +${v}`, f:(m,v)=>m.allAtk+=v},
+  'wands-5': {v:4, rv:6, d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
   'cups-12': {v:2, rv:4, d:v=>`ทุกเทิร์นได้เกราะ ${v}`, f:(m,v)=>m.turnBlock+=v},               // Knight of Cups
 };
 Object.entries(ALTS).forEach(([id, a]) => ARC[id].alt = a);
@@ -500,7 +519,7 @@ function buildMods(arc, equip = [], stats = null) {
     restMult:1, startThorns:0, vulnBonus:0, blockFlat:0, zeroDraw:0, goldMult:0,
     allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0,
     maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false, sunDraw:0, discardDraw:0,
-    turnEndHeal:0, handBonus:0, pinHit:0, pinEvery:1, lowHpBlock:0, ringEvery:0, gloveTimes:0, gloveBlock:0, gloveDraw:0};
+    turnEndHeal:0, handBonus:0, pinHit:0, pinEvery:1, wandBonus:0, wandEvery:1, enemyBlock:0, lowHpBlock:0, ringEvery:0, gloveTimes:0, gloveBlock:0, gloveDraw:0};
   if (arc) {
     const M = eff(arc.major);
     M.f(m, arcValue(M, arc.major.rev));
@@ -508,7 +527,7 @@ function buildMods(arc, equip = [], stats = null) {
     arc.minors.forEach(e => {
       const N = eff(e);
       N.f(m, arcValue(N, e.rev, minorMult(arc.major, e)));
-      if (e.rev) BAD[N.bad].f(m);
+      if (e.rev) badOf(N).f(m);
     });
   }
   equip.filter(Boolean).forEach(e => AMU[e.id].f(m, AMU[e.id].t[e.tier - 1]));
@@ -656,7 +675,7 @@ function tarotHTML(e, major = null, cls = '', attrs = '') {
     ${e.rev ? '<div class="revtag">🔻 กลับหัว</div>' : ''}
     ${e.form === 2 ? '<div class="formtag">🔁 ร่างที่สอง</div>' : ''}
     <div class="td">${A.d(arcValue(A, e.rev, mult))}</div>
-    ${e.rev ? `<div class="bad">⚠ ${BAD[A.bad].d}</div>` : ''}
+    ${e.rev ? `<div class="bad">⚠ ${badOf(A).d}</div>` : ''}
     ${syn ? '<div class="syn">✨ ธาตุตรงกับ Major<br>ผล +25%</div>' : ''}
     ${!A.major && major && major.id === WORLD ? '<div class="syn">🌍 The World ขยายผล</div>' : ''}
   </div>`;
@@ -858,7 +877,7 @@ function showArcDetail(id) {
       🔻 ไพ่กลับหัว: ${canRev(id) ? '<b style="color:#7ef08a">ปลดล็อกแล้ว</b>' : `ปลดล็อกเมื่อมีครบ ${REV_AT} ใบ (ตอนนี้ ${n})`}</div>
     ${arcRow(A)}
     ${A.alt ? `<div class="arow" style="--ec:#9fd8ff"><span class="ai">🔁</span><span><b>ร่างที่สอง</b> ${canAlt(id) ? '' : `<small>🔒 สะสมครบ ${ALT_AT} ใบเพื่อปลดล็อก</small>`}<br>
-      ${A.alt.d(A.alt.v)}<br><small class="bad">🔻 กลับหัว: ${A.alt.d(A.alt.rv)} · ⚠ ${BAD[A.bad].d}</small></span></div>` : ''}
+      ${A.alt.d(A.alt.v)}<br><small class="bad">🔻 กลับหัว: ${A.alt.d(A.alt.rv)} · ⚠ ${badOf(A).d}</small></span></div>` : ''}
     ${canAlt(id) ? `<button class="btn sec" onclick="toggleForm('${id}')">🔁 ใช้${form === 1 ? 'ร่างที่สอง' : 'ร่างปกติ'}</button>` : ''}
     <button class="btn" onclick="craft('${id}')" ${n >= MAX_COPIES ? 'disabled' : ''}>✨ สร้างด้วยผง ${craftCost(A)}</button>
     <button class="btn sec" onclick="closeModal()">ปิด</button><div style="flex:1"></div>`);
@@ -911,7 +930,7 @@ function newRun(arc = null) {
   const equip = SAVE.amu.equip.filter(Boolean).map(e => ({...e}));
   const m = buildMods(arc, equip, SAVE.hero.stats);
   const tier = Math.max(1, Math.min(TIERS, SAVE.tower.cleared + 1, SAVE.tower.sel || 1));
-  G = {arc, amu:equip, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), pity:0, deck:[], revived:false,
+  G = {arc, amu:equip, mods:m, maxHp:Math.max(20, BASE_HP + m.maxHp), gold:Math.max(0, 99 + m.goldStart), pity:0, deck:[], revived:false,
        tier, stage:1, cleared:0, expAcc:0, first:tier > SAVE.tower.cleared, lv0:SAVE.hero.level, node:null};
   G.hp = G.maxHp; G.doors = genDoors(1, tier);
   for (let i = 0; i < 5; i++) G.deck.push(inst('strike'));
@@ -951,7 +970,7 @@ function startCombat(eid) {
   const hpK = 1 + TIER_HP * (t - 1), dK = 1 + TIER_DMG * (t - 1);
   const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
   const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
-  E = {...d, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:0, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  E = {...d, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge;
   C = {draw:shuffle(G.deck), hand:[], discard:[], exhaust:[], maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0,
        thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, discarded:0, recUsed:false, gloveUsed:0,
@@ -982,7 +1001,7 @@ function startTurn() {
   if (m.turnBlock) block(m.turnBlock);
   if (m.turnEnemyDmg) hurtEnemy(m.turnEnemyDmg);
   // ไพ่ที่ไม่ได้ใช้อยู่ในมือต่อ · เติมให้ครบ 5 แล้วจึงจั่วโบนัส (มือสูงสุด 7)
-  let bonus = (first ? m.turn1Draw : 0) + (sunTurn ? m.sunDraw : 0);
+  let bonus = (first ? m.turn1Draw : 0) + (sunTurn ? m.sunDraw : 0) + (third ? m.drawEvery3 : 0);
   if (m.hermit && G.deck.length <= m.hermit) bonus++;
   draw(Math.max(first ? 1 : 0, Math.max(0, HAND + m.handBonus - C.hand.length) + bonus));
   fireTraps('next');
@@ -1215,7 +1234,7 @@ function showGallery() {
 function arcRow(A) {
   return `<div class="arow" style="--ec:${EL[A.el].c}"><span class="ai">${A.icon}</span><span>
     <b>${A.no} · ${A.en}</b> — ${A.th} <small>${EL[A.el].ic} ${EL[A.el].th}</small><br>
-    ${A.d(A.v)}<br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${BAD[A.bad].d}</small></span></div>`;
+    ${A.d(A.v)}<br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${badOf(A).d}</small></span></div>`;
 }
 function showGuide() {
   openModal(`<h2>📘 วิธีเล่น Knight's Deck</h2><div class="guide">
@@ -1356,7 +1375,7 @@ function pickMajor() {
 function powerChips() {
   const em = equippedMajor();
   const m = buildMods({major:{id:em.id, rev:em.rev, form:canAlt(em.id) && SAVE.form[em.id] === 2 ? 2 : 1}, minors:[]}, SAVE.amu.equip.filter(Boolean), SAVE.hero.stats);
-  const c = [`❤ HP สูงสุด ${Math.max(20, 80 + m.maxHp)}`, `⚡ เกจสูงสุด ${MAXE + m.maxGauge}`, `✋ เติมมือ ${Math.min(HAND_MAX, HAND + m.handBonus)} ใบ`, `🪤 ช่องกับดัก ${TRAP_LIMIT + m.trapSlots}`];
+  const c = [`❤ HP สูงสุด ${Math.max(20, BASE_HP + m.maxHp)}`, `⚡ เกจสูงสุด ${MAXE + m.maxGauge}`, `✋ เติมมือ ${Math.min(HAND_MAX, HAND + m.handBonus)} ใบ`, `🪤 ช่องกับดัก ${TRAP_LIMIT + m.trapSlots}`];
   if (m.startBlock) c.push(`🛡 เกราะเริ่มต้น ${m.startBlock}`);
   if (m.turnBlock) c.push(`🛡 เกราะทุกเทิร์น +${m.turnBlock}`);
   if (m.startStr) c.push(`💪 พลังเริ่มต้น ${m.startStr}`);
