@@ -588,7 +588,8 @@ function addExp(n) {
 // ศัตรูต่อด่าน
 const DOOR_POOL = {1:['slime', 'goblin', 'skeleton'], 2:['goblin', 'skeleton', 'orc'], 3:['goblin', 'skeleton', 'orc']};
 const DOOR_W = [{k:'fight', w:4}, {k:'elite', w:2}, {k:'shop', w:2}, {k:'rest', w:2}];
-function genDoors(stage) {
+const REST_GUARANTEE = {tiers:1};                       // ชั้น ≤ ค่านี้: ด่าน 3 (ก่อนบอส) มีกองไฟทุกครั้ง
+function genDoors(stage, tier = 99) {
   if (stage >= STAGES) return [{t:'boss', eid:'dragon'}];
   const pool = DOOR_POOL[stage];
   if (stage === 1) return shuffle(pool).slice(0, 3).map(eid => ({t:'fight', eid}));   // ด่านแรกต่อสู้ทั้งหมด ได้การ์ดแน่นอน
@@ -596,6 +597,7 @@ function genDoors(stage) {
     const types = [0, 1, 2].map(() => weighted(DOOR_W).k);
     const n = k => types.filter(x => x === k).length;
     if (n('shop') > 1 || n('rest') > 1 || n('elite') > 1 || n('fight') + n('elite') < 1) continue;   // กันโชคร้าย
+    if (stage === STAGES - 1 && tier <= REST_GUARANTEE.tiers && n('rest') < 1) continue;            // ก่อนบอสต้องมีกองไฟ
     const ens = shuffle(pool); let ei = 0;
     return types.map(t => t === 'fight' ? {t, eid:ens[ei++ % ens.length]} : t === 'elite' ? {t, eid:'darkknight'} : {t});
   }
@@ -893,7 +895,7 @@ function newRun(arc = null) {
   const tier = Math.max(1, Math.min(TIERS, SAVE.tower.cleared + 1, SAVE.tower.sel || 1));
   G = {arc, amu:equip, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), pity:0, deck:[], revived:false,
        tier, stage:1, cleared:0, expAcc:0, first:tier > SAVE.tower.cleared, lv0:SAVE.hero.level, node:null};
-  G.hp = G.maxHp; G.doors = genDoors(1);
+  G.hp = G.maxHp; G.doors = genDoors(1, tier);
   for (let i = 0; i < 5; i++) G.deck.push(inst('strike'));
   for (let i = 0; i < 4; i++) G.deck.push(inst('defend'));
   G.deck.push(inst('bash'));
@@ -908,7 +910,7 @@ function chooseDoor(i) {
   else { screen = 'rest'; render(); }
 }
 function nextFloor() {                                   // จบด่านนี้ → ไปด่านถัดไป
-  G.stage++; G.doors = genDoors(G.stage);
+  G.stage++; G.doors = genDoors(G.stage, G.tier);
   screen = 'doors'; render();
 }
 function finishRun(win) {
@@ -1149,7 +1151,8 @@ function removeService() {
 }
 
 // ================= กองไฟ =================
-const restAmount = () => Math.round(G.maxHp * .3 * G.mods.restMult);
+const REST = {frac:0.3};                                   // สัดส่วน HP สูงสุดที่กองไฟฟื้น
+const restAmount = () => Math.round(G.maxHp * REST.frac * G.mods.restMult);
 function restHeal() { G.hp = Math.min(G.maxHp, G.hp + restAmount()); nextFloor(); }
 function restRemove() {
   openPicker('ฝึกฝน: เลือกการ์ดที่จะลบ', uid => { removeCard(uid); nextFloor(); });
@@ -1207,7 +1210,8 @@ function showGuide() {
     <li>ด่าน 2–3: เลือก 1 จาก 3 บาน (⚔️ ต่อสู้ · ☠️ ศัตรูพิเศษ · 🛒 ร้านค้า · 🔥 กองไฟ) แต่ละชุดมีประตูต่อสู้อย่างน้อย 1 บาน</li>
     <li>ด่าน 4: บอสประจำชั้น (ไม่ต้องเลือก)</li>
     <li>ศัตรูพิเศษยากกว่า แต่ได้การ์ดเลือกจาก 4 ใบ โอกาสหายากสูงกว่า และ EXP มากกว่า</li>
-    <li>เลือกให้สมดุลระหว่าง "เสริมสำรับ" กับ "รักษา HP" เช่น เจอกองไฟก่อนบอสเป็นประตูที่ดี</li></ul>
+    <li>เลือกให้สมดุลระหว่าง "เสริมสำรับ" กับ "รักษา HP" เช่น เจอกองไฟก่อนบอสเป็นประตูที่ดี</li>
+    <li>ชั้น 1: ด่าน 3 (ก่อนบอส) <b>มีประตูกองไฟทุกครั้ง</b> ชั้นที่สูงกว่านั้นขึ้นกับโชค</li></ul>
 
     <h3>🧙 เลเวลและสถานะ</h3>
     <ul><li>ผ่านด่านได้ <b>EXP</b> (ต่อสู้ 10 · ศัตรูพิเศษ 25 · บอส 50 · ชั้นสูงได้เพิ่ม) แพ้ก็ยังได้ EXP จากด่านที่ผ่านมาแล้ว</li>
@@ -1300,7 +1304,7 @@ function doorHTML(d, i) {
     const extra = t === 'elite' ? '<br>การ์ดเลือกจาก 4 ใบ · โอกาสหายากสูง' : t === 'boss' ? '<br>ชนะเพื่อปลดล็อกชั้นถัดไป' : '<br>ได้การ์ดใหม่ + ทอง';
     body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${e.name}</b><small>HP ~${hp} · ⭐ +${exp} EXP${extra}</small></span>`;
   } else if (t === 'shop') body = `<span class="dart">🛒</span><span class="dinfo"><b>ร้านค้า</b><small>ซื้อการ์ด · ซองสุ่ม · ลบการ์ด</small></span>`;
-  else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(.3 * G.mods.restMult)} หรือลบการ์ด 1 ใบ</small></span>`;
+  else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(REST.frac * G.mods.restMult)} หรือลบการ์ด 1 ใบ</small></span>`;
   return `<button class="door ${t}" onclick="chooseDoor(${i})">${body}<span class="dgo">▶</span></button>`;
 }
 function selectTier(t) {
@@ -1453,6 +1457,10 @@ const SCREENS = {
     <h2>🏰 ชั้น ${G.tier} · ด่าน ${G.stage}/${STAGES}</h2>
     <div class="steps">${[1, 2, 3, 4].map(k => `<span class="step ${k < G.stage ? 'done' : k === G.stage ? 'cur' : ''}">${k === STAGES ? '🐉' : k}</span>`).join('')}</div>
     <div class="muted">${G.stage === STAGES ? 'บอสประจำชั้นรออยู่ · เตรียมตัวให้พร้อม' : 'เลือกประตู 1 บาน'}</div>
+    ${G.stage === STAGES - 1 ? `<div class="box" style="text-align:center;${G.hp < G.maxHp * .7 ? 'border:1px solid #ff9a4a' : ''}">${
+      G.hp < G.maxHp * .7
+        ? `⚠ HP เหลือ ${Math.round(G.hp / G.maxHp * 100)}% · ด่านถัดไปคือบอส ${G.doors.some(d => d.t === 'rest') ? 'แนะนำเลือก 🔥 กองไฟ' : 'ระวังตัว'}`
+        : `💡 ด่านถัดไปคือบอส · HP ${G.hp}/${G.maxHp}${G.doors.some(d => d.t === 'rest') ? ' · มีกองไฟให้พักก่อนเข้าบอส' : ''}`}</div>` : ''}
     ${G.doors.map(doorHTML).join('')}
   </div>`,
 
