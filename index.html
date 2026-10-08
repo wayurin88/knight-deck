@@ -210,6 +210,10 @@ button.arow{color:var(--txt);text-align:left}
 .bar.brk{height:12px;background:#2b2410;margin-top:-2px}.bar.brk>i{background:linear-gradient(#e8c24a,#a07a10)}.bar.brk>span{font-size:9px;line-height:11px}
 .st.wk{background:#4a3a14;color:#ffe9a8}
 .kcard.wkhit{box-shadow:0 0 12px var(--ec),0 4px 10px rgba(0,0,0,.5)}
+.kcard .kwk.bad{background:#7a3030;color:#ffd0d0}
+.stains{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px}
+.stains .sd{width:26px;height:26px;border-radius:50%;border:2px solid var(--ec);display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4)}
+.stains .rx{background:rgba(255,210,90,.18);border:1px solid #e8c24a;border-radius:10px;padding:2px 8px;font-size:11px}
 .kcard .kwk{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:#e8c24a;color:#201400;font-size:9px;font-weight:700;border-radius:8px;padding:1px 6px;white-space:nowrap}
 .basicbtn{background:rgba(0,0,0,.5);border:2px solid #9fc0dd;border-radius:12px;padding:5px 8px;font-size:18px;line-height:1.1;text-align:center;color:var(--txt)}
 .basicbtn small{display:block;font-size:9px;opacity:.85}.basicbtn:disabled{opacity:.35}
@@ -272,7 +276,8 @@ function calcDmg(n, mult = 1) {
   if (C.played === 1) d *= 1 + m.secondMult;
   d = Math.floor(d);
   if (E.vuln > 0) d = Math.floor(d * (1.5 + m.vulnBonus));
-  if (C.curEl && C.curEl === E.wk) d = Math.floor(d * WEAK_K);       // ไพ่ธาตุตรงจุดอ่อน
+  if (C.curEl) d = Math.floor(d * (C.curEl === E.wk ? WEAK_K : C.curEl === E.res ? RES_K : 1));   // ธาตุชนะ ×1.5 · ธาตุแพ้ ×0.75
+  if (C.boost) d = Math.floor(d * 1.25);                                // ตราธาตุเดียวกัน 2 ดวง
   if (E.stun > 0) d = Math.floor(d * STUN_K);                          // ศัตรูมึน
   return Math.max(0, d);
 }
@@ -546,15 +551,35 @@ const amuText = (id, t) => AMU[id].d(AMU[id].t[t - 1]);
 
 // ================= ศัตรู =================
 const ELKEYS = ['fire', 'water', 'air', 'earth'];                // จุดอ่อนของศัตรู: หมุนตามชั้น (ชั้นถัดไปอ่อนต่อธาตุถัดไป)
-const WEAK_K = 1.5, STUN_K = 1.3, BASIC_DMG = 4;                // ดาเมจธาตุอ่อน ×1.5 · ศัตรูมึนรับดาเมจ ×1.3 · โจมตีพื้นฐาน
-const wkOf = (d, t) => ELKEYS[(d.wk + t - 1) % 4];
+// วงจรธาตุ: น้ำ > ไฟ > ดิน > ลม > น้ำ (ซ้ายชนะขวา)
+const BEATS = {water:'fire', fire:'earth', earth:'air', air:'water'};
+const BEATEN_BY = Object.fromEntries(Object.entries(BEATS).map(([a, b]) => [b, a]));
+const WEAK_K = 1.5, RES_K = 0.75, STUN_K = 1.3, BASIC_DMG = 4;     // ธาตุที่ชนะศัตรู ×1.5 · ธาตุที่แพ้ ×0.75 · ศัตรูมึนรับดาเมจ ×1.3
+const elOf = (d, t) => ELKEYS[(d.wk + t - 1) % 4];                 // ธาตุของศัตรู (หมุนตามชั้น)
+const wkOf = (d, t) => BEATEN_BY[elOf(d, t)];                      // ธาตุที่ชนะศัตรูตัวนี้ = จุดอ่อน
+const DRAGON_NAME = {fire:'มังกรเพลิง', water:'มังกรสมุทร', air:'มังกรพายุ', earth:'มังกรศิลา'};
+const enemyName = (d, el) => d.name === 'มังกรเพลิง' ? DRAGON_NAME[el] : d.name;
+const matchK = () => {                                              // ธาตุ Major เทียบธาตุศัตรู: ชนะ −15% ดาเมจที่ได้รับ · แพ้ +15%
+  const M = ARC[G.arc.major.id].el;
+  return BEATS[M] === E.el ? 0.85 : BEATS[E.el] === M ? 1.15 : 1;
+};
+// ปฏิกิริยาตราธาตุ (ตรา 2 ดวงต่างธาตุ เกิดผลเมื่อใช้ไพ่ใบถัดไป)
+const REACT = {
+  'fire+water': {n:'ไอน้ำ',          ic:'♨️', d:'Break +4',        f:() => addBreak(4)},
+  'air+fire':   {n:'ระเบิด',         ic:'💥', d:'ดาเมจ 12',        f:() => atk(12)},
+  'earth+fire': {n:'ลาวา',           ic:'🌋', d:'เปราะบาง 2',      f:() => applyE('vuln', 2)},
+  'air+water':  {n:'พายุเยือกแข็ง',  ic:'🧊', d:'อ่อนแรง 2',       f:() => applyE('weak', 2)},
+  'earth+water':{n:'โคลน',           ic:'🟤', d:'เกราะ 10',        f:() => block(10)},
+  'air+earth':  {n:'พายุทราย',       ic:'🏜️', d:'พลังงาน +1',      f:() => gainE(1)},
+};
+const reactKey = (a, b) => [a, b].sort().join('+');
 const ENEMIES = {
-  slime:    {name:'สไลม์กรด', art:'🟢', wk:0, bk:12, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
-  goblin:   {name:'ก็อบลินโจร', art:'👺', wk:2, bk:12, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
-  skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:3, bk:14, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
-  orc:      {name:'ออร์คคลั่ง', art:'👹', wk:1, bk:16, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
-  darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', wk:0, bk:18, hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
-  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:1, bk:24, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
+  slime:    {name:'สไลม์กรด', art:'🟢', wk:1, bk:12, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
+  goblin:   {name:'ก็อบลินโจร', art:'👺', wk:3, bk:12, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
+  skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:2, bk:14, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
+  orc:      {name:'ออร์คคลั่ง', art:'👹', wk:0, bk:16, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
+  darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', wk:2, bk:18, hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
+  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:0, bk:24, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
 };
 
 // ================= หอคอย · เลเวล · ประตู =================
@@ -638,16 +663,16 @@ function flushFx() {
 // ไพ่ต่อสู้ในมือ (Minor 4 ใบ) · c = {id, rev, used}
 function kitCardHTML(c, i) {
   const A = ARC[c.id], k = kitK(c), cost = kitCost(c);
-  const cant = !c.used && cost > C.energy, hit = A.el === E.wk;
-  C.curEl = A.el;
+  const cant = !c.used && cost > C.energy, hit = A.el === E.wk, res = A.el === E.res;
+  C.curEl = A.el; C.boost = boostFor(A.el);
   const desc = A.ops.map(op => `<div>${opText(op, k, c.rev)}</div>`).join('');
-  C.curEl = null;
+  C.curEl = null; C.boost = false;
   return `<div class="kcard ${hit ? 'wkhit' : ''} ${c.used ? 'used' : ''} ${cant ? 'cant' : ''} ${C.sel === i ? 'sel' : ''} ${c.rev ? 'isrev' : ''}" style="--ec:${EL[A.el].c}" data-i="${i}">
     <div class="cost">${cost}</div><div class="krole">${ROLE[A.role].ic}</div>
     <div class="kname">${A.sk}</div>
     <div class="kart">${A.icon}<small>${A.no}</small></div>
     <div class="kdesc">${desc}</div>
-    ${hit ? '<div class="kwk">🎯 ธาตุอ่อน</div>' : ''}
+    ${hit ? '<div class="kwk">🎯 ชนะธาตุ ×1.5</div>' : res ? '<div class="kwk bad">⬇ แพ้ธาตุ ×0.75</div>' : C.stains.length === 2 && C.stains[0] === C.stains[1] && C.stains[0] === A.el ? '<div class="kwk">✨ ตรา +25%</div>' : ''}
     ${c.rev ? '<div class="krev">🔻 กลับหัว</div>' : ''}
     ${c.used ? '<div class="kused">ใช้แล้ว</div>' : ''}</div>`;
 }
@@ -1023,6 +1048,18 @@ function kitCost(c) {                                          // ค่าพ�
   if (C.played === 0 && C.turn % 2 === 0) x -= m.evenFirstDisc;
   return Math.max(0, x);
 }
+const boostFor = el => C.stains.length === 2 && C.stains[0] === C.stains[1] && C.stains[0] === el;
+function applyStain(el) {                                      // ใช้ไพ่ → ศัตรูได้ตราธาตุ · 2 ดวงต่างธาตุ = ปฏิกิริยาเมื่อใช้ไพ่ใบถัดไป
+  const st = C.stains;
+  if (st.length === 2 && st[0] !== st[1]) {
+    const R = REACT[reactKey(st[0], st[1])];
+    C.stains = [el]; C.curEl = null;
+    fx('enemy', `${R.ic} ${R.n}!`, '#ffd25a'); R.f();
+    return;
+  }
+  if (boostFor(el)) { C.stains = [el]; return; }               // ตราคู่ซ้ำถูกใช้ไปกับไพ่ใบนี้แล้ว
+  st.push(el); if (st.length > 2) st.shift();
+}
 function addBreak(n) {
   if (n <= 0 || E.stun > 0 || E.brkLock > 0 || E.hp <= 0) return;
   E.brk = Math.min(E.brkMax, E.brk + n);
@@ -1046,10 +1083,11 @@ function startCombat(eid) {
   const hpK = (1 + TIER_HP * (t - 1)) * ENEMY_HP_K, dK = (1 + TIER_DMG * (t - 1)) * ENEMY_DMG_K;
   const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
   const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
-  E = {...d, wk:wkOf(d, t), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  const el = elOf(d, t);
+  E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:BEATS[el], brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge, ultMax = Math.max(5, ULT_MAX - m.ultCut);
   C = {kit:G.arc.minors.map(e => ({...e, used:false})), maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0, strT:0,
-       thorns:0, reflectT:0, curEl:null, basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
+       thorns:0, reflectT:0, curEl:null, boost:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
        ult:Math.min(ultMax, m.startCharge), ultMax, starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
@@ -1097,9 +1135,10 @@ function playKit(i) {
   C.energy -= cost;
   if (C.freeLeft > 0) C.freeLeft--;
   C.sel = null; c.used = true;
-  C.curEl = A.el;
+  C.curEl = A.el; C.boost = boostFor(A.el);
   runOps(A.ops, kitK(c), c.rev, c.id);
-  C.curEl = null;
+  C.curEl = null; C.boost = false;
+  applyStain(A.el);
   if (A.ops.some(o => o[0].startsWith('atk'))) C.atkCount++;
   if (A.role === 'atk' || A.role === 'spc') addBreak(2 + (A.el === E.wk ? 1 : 0));
   C.played++; C.totalPlayed++;
@@ -1127,7 +1166,7 @@ function endTurn() {
   render();
   setTimeout(enemyTurn, 450);
 }
-const enemyDmg = base => Math.floor((base + E.str) * (E.weak > 0 ? .75 : 1));
+const enemyDmg = base => Math.floor((base + E.str) * (E.weak > 0 ? .75 : 1) * matchK());
 function enemyTurn() {
   const m = G.mods;
   if (E.stun > 0) {                                           // มึน: ข้ามเทิร์น (ท่าที่เตรียมไว้ยังไม่ถูกใช้)
@@ -1171,7 +1210,7 @@ function enemyTurn() {
 // ข้อความท่าศัตรู (ตัวเลขรวมพลังและอ่อนแรงแล้ว)
 function intentParts(it, str, weak) {
   const parts = [];
-  if (it.atk) parts.push(`🗡️ ${Math.floor((it.atk + str) * (weak > 0 ? .75 : 1))}${it.hits > 1 ? ' ×' + it.hits : ''}`);
+  if (it.atk) parts.push(`🗡️ ${Math.floor((it.atk + str) * (weak > 0 ? .75 : 1) * matchK())}${it.hits > 1 ? ' ×' + it.hits : ''}`);
   if (it.block) parts.push(`🛡️ เกราะ ${it.block}`);
   if (it.str) parts.push(`💪 พลัง +${it.str}`);
   return parts.join(' + ');
@@ -1299,11 +1338,20 @@ function showGuide() {
     <li>ไม่มีการทิ้งไพ่ — เป็นเรื่องของการ <b>บริหารพลังงาน</b> ว่าจะใช้ใบไหนก่อน ใบไหนเก็บพลังงานไว้ให้เทิร์นหน้า</li>
     <li>ตัวเลข <span style="color:#7ef08a">สีเขียว</span> = สูงกว่าค่าปกติ (มีโบนัส) · <span style="color:#ff8a7a">สีแดง</span> = ต่ำกว่า</li></ul>
 
-    <h3>🎯 จุดอ่อนและ Break</h3>
-    <ul><li>ศัตรูแต่ละตัว <b>อ่อนต่อ 1 ธาตุ</b> (ดูที่ป้ายเหนือหลอด HP และที่ประตู) ไพ่ธาตุนั้นทำดาเมจ <b>×1.5</b> · ชั้นถัดไปจุดอ่อนจะเปลี่ยนธาตุ</li>
-    <li>ไพ่ที่ตรงจุดอ่อนมีป้าย 🎯 ใต้การ์ด</li>
-    <li>ไพ่ ⚔️ โจมตี และ 🌀 พิเศษ เติมหลอด <b>💢 Break</b> (+2 · ตรงจุดอ่อน +3) เต็มแล้วศัตรู <b>😵 มึน</b> ข้ามเทิร์นถัดไป และรับดาเมจ ×1.3 ทันที</li>
-    <li><b>👊 โจมตีพื้นฐาน</b> ฟรี ดาเมจเล็ก ได้พลังงาน +1 ใช้ได้ 1 ครั้งต่อเทิร์น (ช่วยเก็บพลังงานเมื่อไพ่ไม่พอ)</li></ul>
+    <h3>🔄 วงจรธาตุ</h3>
+    <ul><li><b>💧 น้ำ ชนะ 🔥 ไฟ ชนะ 🌿 ดิน ชนะ 🌪️ ลม ชนะ 💧 น้ำ</b></li>
+    <li>ศัตรูแต่ละตัวมี <b>ธาตุประจำตัว</b> (เปลี่ยนตามชั้น) ไพ่ธาตุที่ <b>ชนะ</b> ธาตุศัตรู = ดาเมจ ×1.5 (🎯 อ่อนต่อ) · ไพ่ธาตุที่ <b>แพ้</b> = ×0.75 · ดูป้ายใต้การ์ด</li>
+    <li>ธาตุ Major ของคุณ <b>ชนะ</b> ธาตุศัตรู: ดาเมจที่ได้รับ −15% · <b>แพ้</b>: +15% (ประตูแสดง ✅ / ⚠ ให้)</li></ul>
+
+    <h3>🧪 ตราธาตุ</h3>
+    <ul><li>ทุกครั้งที่ใช้ไพ่ ศัตรูได้ <b>ตราธาตุ</b> ของไพ่นั้น (เก็บได้ 2 ดวง ดวงใหม่ดันดวงเก่าออก)</li>
+    <li>ตรา 2 ดวง <b>ต่างธาตุ</b> = ปฏิกิริยา เกิดตอนใช้ไพ่ใบถัดไป: ♨️ น้ำ+ไฟ Break +4 · 💥 ไฟ+ลม ดาเมจ 12 · 🌋 ไฟ+ดิน เปราะบาง 2 · 🧊 น้ำ+ลม อ่อนแรง 2 · 🟤 น้ำ+ดิน เกราะ 10 · 🏜️ ลม+ดิน พลังงาน +1</li>
+    <li>ตรา 2 ดวง <b>ธาตุเดียวกัน</b> = ไพ่ธาตุนั้นใบถัดไปแรงขึ้น 25%</li>
+    <li>ผสมไพ่หลายชุดเพื่อให้เกิดปฏิกิริยา · โจมตีพื้นฐานและท่าไม้ตายไม่ให้ตรา</li></ul>
+
+    <h3>💢 Break และโจมตีพื้นฐาน</h3>
+    <ul><li>ไพ่ ⚔️ โจมตี และ 🌀 พิเศษ เติมหลอด <b>💢 Break</b> (+2 · ชนะธาตุศัตรู +3) เต็มแล้วศัตรู <b>😵 มึน</b> ข้ามเทิร์นถัดไป และรับดาเมจ ×1.3 ทันที</li>
+    <li><b>👊 โจมตีพื้นฐาน</b> ฟรี ดาเมจเล็ก ได้พลังงาน +1 ใช้ได้ 1 ครั้งต่อเทิร์น</li></ul>
 
     <h3>🌟 พลังพิเศษและท่าไม้ตาย</h3>
     <ul><li>ทุกครั้งที่ใช้ไพ่ หลอดพลังพิเศษชาร์จ +1 · ถ้าเป็นไพ่ <b>ธาตุเดียวกับ Major</b> ชาร์จ +2 · หลอดเต็มที่ 10</li>
@@ -1374,7 +1422,7 @@ function doorHTML(d, i) {
     const e = ENEMIES[d.eid], hp = Math.round((e.hp[0] + e.hp[1]) / 2 * (1 + TIER_HP * (G.tier - 1)) * ENEMY_HP_K);
     const exp = Math.round(EXPV[t] * tierExpMult(G.tier) * expMult(G.first, G.lv0, G.tier));
     const extra = t === 'elite' ? '<br>ผงดาว + ทอง มากกว่าปกติ' : t === 'boss' ? '<br>ชนะเพื่อปลดล็อกชั้นถัดไป' : '<br>ได้ผงดาว + ทอง';
-    body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${e.name}</b><small>HP ~${hp} · ⭐ +${exp} EXP · 🎯 อ่อนต่อ ${EL[wkOf(e, G.tier)].ic}${EL[wkOf(e, G.tier)].th}${extra}</small></span>`;
+    body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${enemyName(e, elOf(e, G.tier))}</b><small>HP ~${hp} · ⭐ +${exp} EXP · ${EL[elOf(e, G.tier)].ic} ธาตุ${EL[elOf(e, G.tier)].th} · 🎯 อ่อนต่อ ${EL[wkOf(e, G.tier)].ic}${(() => { const M = ARC[G.arc.major.id].el, el = elOf(e, G.tier); return BEATS[M] === el ? ' · ✅ Major ชนะธาตุนี้' : BEATS[el] === M ? ' · ⚠ Major แพ้ธาตุนี้' : ''; })()}${extra}</small></span>`;
   } else if (t === 'shop') body = `<span class="dart">🛒</span><span class="dinfo"><b>ร้านเครื่องราง</b><small>ซื้อเครื่องรางชั่วคราว (เฉพาะรอบนี้) · ยาฟื้น HP</small></span>`;
   else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(REST.frac * G.mods.restMult)} หรือเปลี่ยนไพ่ต่อสู้ 1 ใบ</small></span>`;
   return `<button class="door ${t}" onclick="chooseDoor(${i})">${body}<span class="dgo">▶</span></button>`;
@@ -1470,7 +1518,8 @@ const SCREENS = {
       • สุ่มไพ่เพิ่มที่ <b>วิหารดวงดาว</b> · ไพ่ซ้ำปลุกพลังภาพไพ่ และครบ 4 ใบเลือก <b>กลับหัว</b> ได้ (แรงขึ้น ×1.4 แต่มีข้อเสีย)<br>
       • <b>เกจพลังงาน ⚡</b> สูงสุด 5 เริ่มเต็ม ฟื้น +3 ทุกต้นเทิร์น · ไพ่แต่ละใบใช้ได้ <b>1 ครั้งต่อเทิร์น</b><br>
       • ใช้ไพ่ธาตุเดียวกับ Major ชาร์จพลังพิเศษ ×2 และไพ่ธาตุเดียวกันแรงขึ้น 25%<br>
-      • ศัตรู <b>อ่อนต่อ 1 ธาตุ</b> (ดาเมจ ×1.5) · เติมหลอด 💢 Break จนเต็มเพื่อให้ศัตรูมึน · 👊 โจมตีพื้นฐานฟรี +1⚡<br>
+      • วงจรธาตุ <b>น้ำ>ไฟ>ดิน>ลม>น้ำ</b> · ไพ่ที่ชนะธาตุศัตรูดาเมจ ×1.5 ที่แพ้ ×0.75 · ใช้ไพ่ต่างธาตุติดกันเกิด <b>ปฏิกิริยาตราธาตุ</b><br>
+      • เติมหลอด 💢 Break จนเต็มเพื่อให้ศัตรูมึน · 👊 โจมตีพื้นฐานฟรี +1⚡<br>
       • ชนะการต่อสู้ได้ <b>ผงดาว ✨</b> ใช้สร้างไพ่ · กองไฟเปลี่ยนไพ่ต่อสู้ได้ 1 ใบ<br>
       • กล่องเหนือศัตรูบอกท่า <b>ตอนนี้</b> และ <b>ถัดไป</b> ใช้วางแผนล่วงหน้า 2 เทิร์น<br>
       • ไต่ <b>หอคอย 10 ชั้น</b> · แต่ละชั้น 4 ด่าน เลือกประตูได้ · ด่านที่ 4 คือบอส · ขึ้นเลเวลเพื่ออัปสถานะ
@@ -1635,8 +1684,10 @@ const SCREENS = {
       <div class="ename">${E.name} ${E.tag ? `<small>· ${E.tag}</small>` : ''}</div>
       <div class="bar"><i style="width:${E.hp / E.maxHp * 100}%"></i><span>${E.hp}/${E.maxHp}</span></div>
       <div class="bar brk"><i style="width:${E.brk / E.brkMax * 100}%"></i><span>${E.stun ? '😵 มึน!' : `💢 Break ${E.brk}/${E.brkMax}`}</span></div>
+      <div class="stains">🧪 ตรา ${[0, 1].map(i => C.stains[i] ? `<span class="sd" style="--ec:${EL[C.stains[i]].c}">${EL[C.stains[i]].ic}</span>` : `<span class="sd" style="--ec:#555;opacity:.4">·</span>`).join('')}
+        ${C.stains.length === 2 ? (C.stains[0] === C.stains[1] ? `<span class="rx">✨ ไพ่ธาตุนี้ใบถัดไป +25%</span>` : (R => `<span class="rx">${R.ic} ${R.n}: ${R.d} (ใช้ไพ่ใบถัดไป)</span>`)(REACT[reactKey(C.stains[0], C.stains[1])])) : ''}</div>
       <div class="statuses">
-        <span class="st wk">🎯 อ่อนต่อ ${EL[E.wk].ic}${EL[E.wk].th} ×${WEAK_K}</span>
+        <span class="st wk">${EL[E.el].ic} ธาตุ${EL[E.el].th} · 🎯 อ่อนต่อ ${EL[E.wk].ic} ×${WEAK_K} · ⬇ ทน ${EL[E.res].ic} ×${RES_K}</span>
         ${E.block ? `<span class="st blk">🛡 ${E.block}</span>` : ''}
         ${E.str ? `<span class="st">💪 พลัง ${E.str}</span>` : ''}
         ${E.vuln ? `<span class="st">🎯 เปราะบาง ${E.vuln}</span>` : ''}
