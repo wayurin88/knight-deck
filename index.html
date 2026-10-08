@@ -84,6 +84,21 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .ctile.l5,.ctile.l7{border-color:#ffd25a;box-shadow:0 0 8px rgba(255,210,90,.5);background:radial-gradient(circle at 50% 30%,#3b2a6e,#120c24 75%)}
 .ctile.l7 .ci{animation:floaty 2.4s ease-in-out infinite}
 .pullres{display:flex;flex-direction:column;align-items:center;gap:4px}
+.amu{display:flex;align-items:center;gap:8px;width:100%;padding:8px;border-radius:12px;background:rgba(255,255,255,.05)}
+.amu .ai2{font-size:28px;width:38px;text-align:center;flex-shrink:0}
+.amu .ainfo{flex:1;min-width:0;font-size:12px;line-height:1.3}
+.amu .ainfo small{display:block;opacity:.7;font-size:11px}
+.tchips{display:flex;gap:4px;flex-shrink:0}
+.tchip{--tc:#aaa;min-width:38px;padding:4px 2px;border-radius:8px;border:2px solid var(--tc);font-size:11px;font-weight:700;line-height:1.2;text-align:center;color:var(--tc);background:rgba(0,0,0,.35)}
+.tchip small{display:block;font-size:10px;color:var(--txt);font-weight:400}
+.tchip.zero{opacity:.35}
+.tchip.on{background:var(--tc);color:#111}.tchip.on small{color:#111}
+.tchip.t1{--tc:#b8b8c0}.tchip.t2{--tc:#5ab0ff}.tchip.t3{--tc:#b07cf0}.tchip.t4{--tc:#ffd25a}
+.aslot{width:74px;height:74px;border-radius:50%;border:2px dashed rgba(255,255,255,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:28px;color:rgba(255,255,255,.4);flex-shrink:0}
+.aslot small{font-size:9px;line-height:1.1;text-align:center}
+.aslot.filled{border:2px solid var(--tc);color:#fff;box-shadow:0 0 12px var(--tc);background:radial-gradient(circle,#2b2140,#120c24)}
+.arow2{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.05);font-size:12px}
+.arow2.cur{background:rgba(255,210,90,.15);border:1px solid #ffd25a}
 .pullres .tag{font-size:11px;font-weight:700;text-align:center;line-height:1.3;max-width:100px}
 .pullres .tarot{animation:pop .7s ease-out both}
 .arcbar{display:flex;justify-content:center;align-items:center;gap:8px;padding:4px;background:rgba(0,0,0,.25);font-size:12px}
@@ -330,8 +345,8 @@ function discardBonuses(c) {
 function disText(c) {
   if (!c.dis) return '';
   const b = discardBonuses(c), extra = b.rec + b.first;
-  if (c.dis.k === 'rec') return extra ? `🔋 +${c.dis.n + extra} พลังงาน <small>(${c.dis.n} + ${extra} จากไพ่)</small>` : `🔋 +${c.dis.n} พลังงาน`;
-  return `⏳ ${c.dis.s}${b.first ? ` <small>· +${b.first}⚡ จากไพ่</small>` : ''}`;
+  if (c.dis.k === 'rec') return extra ? `🔋 +${c.dis.n + extra} พลังงาน <small>(${c.dis.n} + ${extra} โบนัส)</small>` : `🔋 +${c.dis.n} พลังงาน`;
+  return `⏳ ${c.dis.s}${b.first ? ` <small>· +${b.first}⚡ โบนัส</small>` : ''}`;
 }
 const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
 const POOL = {common:[], uncommon:[], rare:[]};
@@ -366,7 +381,7 @@ const MAJORS = [
   {no:'II',   en:'The High Priestess',th:'นักบวชหญิง',    el:'water', icon:'📿', v:3,   rv:5,   bad:'estr',   d:v=>`มองเห็นการ์ด ${v} ใบถัดไปในกองจั่ว · ทิ้งการ์ดใบแรกของเทิร์น จั่ว 1`, f:(m,v)=>{m.seeTop=Math.max(m.seeTop,v); m.discardDraw+=1;}},
   {no:'III',  en:'The Empress',       th:'จักรพรรดินี',    el:'earth', icon:'👑', v:8,   rv:12,  bad:'shop',   d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
   {no:'IV',   en:'The Emperor',       th:'จักรพรรดิ',      el:'earth', icon:'🏛️', v:10,  rv:16,  bad:'e1',     d:v=>`เริ่มการต่อสู้ได้เกราะ ${v}`, f:(m,v)=>m.startBlock+=v},
-  {no:'V',    en:'The Hierophant',    th:'ผู้นำศาสนา',     el:'water', icon:'⛪', v:3,   rv:5,   bad:'hp',     d:v=>`วางกับดักได้ 3 อัน · กับดักทำงานแล้วได้เกราะ ${v}`, f:(m,v)=>{m.trapSlots=1; m.trapBlock+=v;}},
+  {no:'V',    en:'The Hierophant',    th:'ผู้นำศาสนา',     el:'water', icon:'⛪', v:3,   rv:5,   bad:'hp',     d:v=>`วางกับดักได้ 3 อัน · กับดักทำงานแล้วได้เกราะ ${v}`, f:(m,v)=>{m.trapSlots+=1; m.trapBlock+=v;}},
   {no:'VI',   en:'The Lovers',        th:'คู่รัก',         el:'water', icon:'💞', v:.4,  rv:.7,  bad:'rew',    d:v=>`การ์ดใบที่ 2 ของทุกเทิร์น ผล ×${1+v}`, f:(m,v)=>m.secondMult+=v},
   {no:'VII',  en:'The Chariot',       th:'ราชรถ',         el:'fire',  icon:'🏇', v:3,   rv:6,   bad:'blk',    d:v=>`การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${v}`, f:(m,v)=>m.firstAtk+=v},
   {no:'VIII', en:'Strength',          th:'พลังแห่งใจ',     el:'fire',  icon:'🦁', v:2,   rv:3,   bad:'ehp',    d:v=>`เริ่มการต่อสู้ได้พลัง +${v}`, f:(m,v)=>m.startStr+=v},
@@ -455,25 +470,56 @@ function minorMult(major, e) {
   if (ARC[e.id].el === ARC[major.id].el) k *= 1.25;
   return k;
 }
-function buildMods(arc) {
+function buildMods(arc, equip = []) {
   const m = {maxHp:0, goldStart:0, startRares:0, turn1Draw:0, seeTop:0, healWin:0, startBlock:0,
     secondMult:0, firstAtk:0, startStr:0, hermit:0, rewardChoices:0, rareChance:0, reflect:0,
     freeRemove:false, removeGold:0, dmgCap:0, dmgPct:0, drain:0, startEnemyDmg:0, starHeal:0,
     startEnemyWeak:0, energyEvery3:0, drawEvery3:0, revive:0, enemyHpPct:0, enemyStr:0, shopPct:0, blockPct:0,
     restMult:1, startThorns:0, vulnBonus:0, blockFlat:0, zeroDraw:0, goldMult:0,
     allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0,
-    maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false, sunDraw:0, discardDraw:0};
-  if (!arc) return m;
-  const M = eff(arc.major);
-  M.f(m, arcValue(M, arc.major.rev));
-  if (arc.major.rev) BAD[M.bad].f(m);
-  arc.minors.forEach(e => {
-    const N = eff(e);
-    N.f(m, arcValue(N, e.rev, minorMult(arc.major, e)));
-    if (e.rev) BAD[N.bad].f(m);
-  });
+    maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false, sunDraw:0, discardDraw:0,
+    turnEndHeal:0, pinHit:0, pinEvery:1, lowHpBlock:0, ringEvery:0, gloveTimes:0, gloveBlock:0, gloveDraw:0};
+  if (arc) {
+    const M = eff(arc.major);
+    M.f(m, arcValue(M, arc.major.rev));
+    if (arc.major.rev) BAD[M.bad].f(m);
+    arc.minors.forEach(e => {
+      const N = eff(e);
+      N.f(m, arcValue(N, e.rev, minorMult(arc.major, e)));
+      if (e.rev) BAD[N.bad].f(m);
+    });
+  }
+  equip.filter(Boolean).forEach(e => AMU[e.id].f(m, AMU[e.id].t[e.tier - 1]));
   return m;
 }
+
+// ================= เครื่องราง 12 ชิ้น × 4 ระดับ =================
+const TIER = ['', 'สามัญ', 'ดี', 'หายาก', 'ตำนาน'], TROM = ['', 'I', 'II', 'III', 'IV'];
+const TCOLOR = ['', '#b8b8c0', '#5ab0ff', '#b07cf0', '#ffd25a'];
+const MERGE_NEED = [4, 6, 9];                 // จำนวนชิ้นที่ใช้รวม: I→II, II→III, III→IV (×1.5 ทุกระดับ)
+const AMU_PRICE = 120;                        // ซื้อระดับ I ด้วยเหรียญ 🪙
+const AMU_PULL = 160;                         // สุ่มด้วยเพชร 1 ครั้ง
+const AMU_RATES = {t2:70, t3:25, t4:5}, AMU_PITY = 40;
+const AMUS = [
+  {id:'bandage', icon:'🩹', name:'ผ้าพันแผลเก่า',   s:'ฟื้น HP ตอนจบเทิร์นคู่',          t:[1,2,2,3],       d:v=>`จบเทิร์นเลขคู่ของคุณ ฟื้น HP ${v}`, f:(m,v)=>m.turnEndHeal+=v},
+  {id:'holy',    icon:'🧪', name:'ขวดน้ำศักดิ์สิทธิ์', s:'ฟื้น HP หลังชนะ',             t:[4,6,8,12],      d:v=>`ชนะการต่อสู้ ฟื้น HP ${v}`, f:(m,v)=>m.healWin+=v},
+  {id:'badge',   icon:'🎖️', name:'ตราอัศวินผู้ล้ม',   s:'HP ต่ำ เริ่มรบได้เกราะ',       t:[8,12,18,26],    d:v=>`เริ่มการต่อสู้ ถ้า HP ต่ำกว่า 50% ได้เกราะ ${v}`, f:(m,v)=>m.lowHpBlock+=v},
+  {id:'ring',    icon:'💍', name:'แหวนพลังสำรอง',    s:'เติมเกจพลังงานเป็นระยะ',       t:[8,7,6,5],       d:v=>`ทุก ${v} เทิร์น เกจพลังงาน +1`, f:(m,v)=>m.ringEvery=m.ringEvery?Math.min(m.ringEvery,v):v},
+  {id:'glass',   icon:'⏳', name:'นาฬิกาทราย',       s:'เทิร์นแรกจั่วเพิ่ม',            t:[1,1,2,2],       d:v=>`เทิร์นแรกของการต่อสู้ จั่ว +${v}`, f:(m,v)=>m.turn1Draw+=v},
+  {id:'gloves',  icon:'🧤', name:'ถุงมือเล่นกล',     s:'ทิ้ง 🔋 ในเทิร์นคู่ ได้เกราะ/จั่ว',  t:[{b:1},{b:2},{b:3},{b:3,d:1}],
+     d:v=>`ทิ้งการ์ด 🔋 ใบแรกของเทิร์นคู่ ได้เกราะ ${v.b}${v.d?` · จั่ว ${v.d}`:''}`, f:(m,v)=>{m.gloveTimes=1; m.gloveBlock+=v.b||0; m.gloveDraw+=v.d||0;}},
+  {id:'cloak',   icon:'🧣', name:'ผ้าคลุมกับดัก',    s:'ช่องกับดักเพิ่ม',               t:[{s:3,b:0},{s:3,b:1},{s:4,b:1},{s:4,b:3}],
+     d:v=>`วางกับดักได้ ${v.s} อัน${v.b?` · กับดักทำงานแล้วได้เกราะ ${v.b}`:''}`, f:(m,v)=>{m.trapSlots+=v.s-TRAP_LIMIT; m.trapBlock+=v.b;}},
+  {id:'shield',  icon:'🪵', name:'โล่ไม้เก่า',       s:'เริ่มรบได้เกราะ',               t:[4,6,8,12],     d:v=>`เริ่มการต่อสู้ได้เกราะ ${v}`, f:(m,v)=>m.startBlock+=v},
+  {id:'pin',     icon:'📌', name:'เข็มกลัดหนาม',     s:'สะท้อนดาเมจเป็นระยะ',        t:[{e:3,d:2},{e:3,d:3},{e:2,d:3},{e:2,d:4}],
+     d:v=>`ทุก ${v.e} เทิร์นของศัตรู ถ้าศัตรูโจมตี สะท้อนดาเมจ ${v.d}`, f:(m,v)=>{m.pinHit+=v.d; m.pinEvery=v.e;}},
+  {id:'luck',    icon:'🍀', name:'เหรียญนำโชค',      s:'ทองจากการต่อสู้เพิ่ม',          t:[25,35,50,75],   d:v=>`ทองจากการต่อสู้ +${v}%`, f:(m,v)=>m.goldMult+=v/100},
+  {id:'map',     icon:'🗺️', name:'แผนที่ลับ',        s:'ตัวเลือกรางวัลเพิ่ม',            t:[{c:1,r:0},{c:1,r:3},{c:2,r:3},{c:2,r:6}],
+     d:v=>`รางวัลการ์ดแสดง +${v.c} ตัวเลือก${v.r?` · โอกาสตำนาน +${v.r}%`:''}`, f:(m,v)=>{m.rewardChoices+=v.c; m.rareChance+=v.r;}},
+  {id:'key',     icon:'🗝️', name:'กุญแจพ่อค้า',      s:'ลดราคาร้านค้า',                 t:[15,20,30,40],   d:v=>`ราคาร้านค้า −${v}%`, f:(m,v)=>m.shopPct-=v/100},
+];
+const AMU = Object.fromEntries(AMUS.map(a => [a.id, a]));
+const amuText = (id, t) => AMU[id].d(AMU[id].t[t - 1]);
 
 // ================= ศัตรู =================
 const ENEMIES = {
@@ -584,6 +630,8 @@ const tierOf = A => A.major ? 'major' : A.court ? 'court' : 'pip';
 const craftCost = A => A.major ? 500 : 100;
 const GEM_PACKS = [{p:'35฿', g:60}, {p:'179฿', g:330}, {p:'699฿', g:1400}];
 
+// เครื่องรางที่เก็บถาวร: inv[id][ระดับ 1-4] = จำนวน · equip = 2 ช่อง {id, tier}
+function newAmu() { return {inv:{}, equip:[null, null], coins:480, pity:0}; }   // เริ่มมี 480 🪙 พอลองซื้อ 4 ชิ้น
 function starterSave() {
   const owned = {};
   // Major 5 ใบ ครบทั้ง 4 ธาตุ
@@ -592,10 +640,11 @@ function starterSave() {
   // Minor ตัวเลข Ace–5 ชุดละ 3 ใบ + ราชสำนัก 2 ใบต่างชุด
   Object.keys(SUITS).forEach(s => shuffle(MINORS.filter(n => n.suit === s && !n.court && n.rank <= 5)).slice(0, 3).forEach(n => owned[n.id] = 1));
   shuffle(Object.keys(SUITS)).slice(0, 2).forEach(s => owned[pick(MINORS.filter(n => n.suit === s && n.court)).id] = 1);
-  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}};
+  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}, amu:newAmu()};
 }
 let SAVE = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } })() || starterSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
+if (!SAVE.amu) SAVE.amu = newAmu();
 persist();
 
 function grant(id) {
@@ -648,7 +697,68 @@ function craft(id) {
 }
 function toggleForm(id) { SAVE.form[id] = SAVE.form[id] === 2 ? 1 : 2; persist(); render(); showArcDetail(id); }
 function resetSave() { SAVE = starterSave(); persist(); render(); toast('รีเซ็ตคอลเลกชันแล้ว (สุ่มชุดเริ่มต้นใหม่)', 'info'); }
-const walletHTML = () => `<div class="wallet"><span class="pill">💎 ${SAVE.gems}</span><span class="pill">🎫 ${SAVE.tickets}</span><span class="pill">✨ ผง ${SAVE.dust}</span></div>`;
+const invN = (id, t) => (SAVE.amu.inv[id] && SAVE.amu.inv[id][t]) || 0;
+const isEquip = (id, t) => SAVE.amu.equip.some(e => e && e.id === id && e.tier === t);
+const availAmu = (id, t) => invN(id, t) - (isEquip(id, t) ? 1 : 0);
+function addAmu(id, t, n = 1) { (SAVE.amu.inv[id] = SAVE.amu.inv[id] || {})[t] = invN(id, t) + n; }
+let amuBack = 'title';
+function buyAmu(id) {
+  if (SAVE.amu.coins < AMU_PRICE) return toast('เหรียญไม่พอ');
+  SAVE.amu.coins -= AMU_PRICE; addAmu(id, 1); persist(); render(); toast(`${AMU[id].icon} ${AMU[id].name} ระดับ I +1`, 'info');
+}
+function pullAmu(n) {
+  if (SAVE.gems < n * AMU_PULL) return toast('เพชรไม่พอ');
+  SAVE.gems -= n * AMU_PULL;
+  const res = [];
+  for (let i = 0; i < n; i++) {
+    SAVE.amu.pity++;
+    const r = Math.random() * 100;
+    const t = SAVE.amu.pity >= AMU_PITY || r < AMU_RATES.t4 ? 4 : r < AMU_RATES.t4 + AMU_RATES.t3 ? 3 : 2;
+    if (t === 4) SAVE.amu.pity = 0;
+    const id = pick(AMUS).id; addAmu(id, t); res.push({id, t});
+  }
+  persist(); render();
+  res.sort((a, b) => b.t - a.t);
+  openModal(`<h2>🔨 ผลการสุ่มเครื่องราง</h2><div class="grid">${res.map((r, i) => `<div class="pullres" style="animation-delay:${i * .08}s">
+    <div class="tag" style="color:${TCOLOR[r.t]}">${TIER[r.t]}</div>
+    <div class="tarot small" style="--ec:${TCOLOR[r.t]};min-height:0;padding:10px 4px;border-color:${TCOLOR[r.t]};animation-delay:${i * .08}s">
+      <div class="ticon">${AMU[r.id].icon}</div><div class="th">${AMU[r.id].name}</div><div class="num">ระดับ ${TROM[r.t]}</div></div></div>`).join('')}</div>
+    <button class="btn sec close" onclick="closeModal()">ตกลง</button>`);
+}
+function mergeAmu(id, t) {
+  const need = MERGE_NEED[t - 1];
+  if (t >= 4 || availAmu(id, t) < need) return toast('ชิ้นไม่พอ');
+  addAmu(id, t, -need); addAmu(id, t + 1); persist(); render(); showAmu(id, t + 1);
+}
+function toggleEquip(id, t) {
+  const eq = SAVE.amu.equip;
+  const k = eq.findIndex(e => e && e.id === id && e.tier === t);
+  if (k >= 0) eq[k] = null;
+  else {
+    if (invN(id, t) < 1) return toast('ยังไม่มีชิ้นนี้');
+    const same = eq.findIndex(e => e && e.id === id);          // ชนิดเดียวกันใส่ซ้ำไม่ได้ → สลับระดับ
+    const slot = same >= 0 ? same : eq.findIndex(e => !e);
+    if (slot < 0) return toast('ช่องเต็ม (2 ช่อง)<br><small>แตะเครื่องรางที่ใส่อยู่เพื่อถอดก่อน</small>');
+    eq[slot] = {id, tier:t};
+  }
+  persist(); render(); showAmu(id, t);
+}
+function showAmu(id, t) {
+  const A = AMU[id], own = invN(id, t), need = MERGE_NEED[t - 1], av = availAmu(id, t), on = isEquip(id, t);
+  openModal(`<div style="flex:1"></div>
+    <div style="font-size:54px">${A.icon}</div><h2>${A.name}</h2>
+    <div class="rlabel" style="color:${TCOLOR[t]}">ระดับ ${TROM[t]} · ${TIER[t]}</div>
+    <div class="box" style="text-align:center">${amuText(id, t)}</div>
+    <div class="muted">มี ${own} ชิ้น${on ? ' (ใส่อยู่ 1)' : ''}</div>
+    ${own ? `<button class="btn" onclick="toggleEquip('${id}',${t})">${on ? '❌ ถอดออก' : '💍 สวมใส่'}</button>` : ''}
+    ${t < 4 ? `<button class="btn sec" onclick="mergeAmu('${id}',${t})" ${av >= need ? '' : 'disabled'}>🔨 รวม ${need} ชิ้น → ระดับ ${TROM[t + 1]} (ใช้ได้ ${Math.max(0, av)}/${need})</button>` : '<div class="muted">ระดับสูงสุดแล้ว</div>'}
+    <div class="sect" style="text-align:center">ทุกระดับ</div>
+    ${[1, 2, 3, 4].map(k => `<div class="arow2 ${k === t ? 'cur' : ''}"><b style="color:${TCOLOR[k]}">${TROM[k]}</b><span>${amuText(id, k)}</span><span style="opacity:.7">×${invN(id, k)}</span></div>`).join('')}
+    <button class="btn sec" onclick="closeModal()">ปิด</button><div style="flex:1"></div>`);
+}
+function showAmuInfo(id, t) { toast(`<b>${AMU[id].icon} ${AMU[id].name}</b> · ${TROM[t]}<br>${amuText(id, t)}`, 'info'); }
+const equipText = () => SAVE.amu.equip.filter(Boolean).map(e => `${AMU[e.id].icon} ${AMU[e.id].name} ${TROM[e.tier]}`).join(' · ') || 'ยังไม่ได้ใส่';
+const walletHTML = () => `<div class="wallet"><span class="pill">💎 ${SAVE.gems}</span><span class="pill">🎫 ${SAVE.tickets}</span><span class="pill">✨ ผง ${SAVE.dust}</span><span class="pill">🪙 ${SAVE.amu.coins}</span></div>`;
 function ctile(A) {
   const n = SAVE.owned[A.id] || 0, lv = levelOf(Math.max(1, n)).at;
   return `<button class="ctile ${n ? 'l' + lv : 'none'}" style="--ec:${EL[A.el].c}" onclick="showArcDetail('${A.id}')">
@@ -701,8 +811,9 @@ function toggleRunForm(k) {
 
 // ================= เริ่มเกม / แผนที่ =================
 function newRun(arc = null) {
-  const m = buildMods(arc);
-  G = {arc, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), floor:0, pity:0, deck:[], revived:false};
+  const equip = SAVE.amu.equip.filter(Boolean).map(e => ({...e}));
+  const m = buildMods(arc, equip);
+  G = {arc, amu:equip, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), floor:0, pity:0, deck:[], revived:false};
   G.hp = G.maxHp;
   for (let i = 0; i < 5; i++) G.deck.push(inst('strike'));
   for (let i = 0; i < 4; i++) G.deck.push(inst('defend'));
@@ -723,11 +834,11 @@ function nextFloor() {
 }
 function finishRun(win) {
   // รางวัลจบรอบ (แพ้ก็ได้) เพื่อให้ผู้เล่นฟรีสุ่มได้
-  G.earn = {gems:30, tickets:(G.floor >= 4 ? 1 : 0) + (win ? 2 : 0)};
-  SAVE.gems += G.earn.gems; SAVE.tickets += G.earn.tickets; persist();
+  G.earn = {gems:30, tickets:(G.floor >= 4 ? 1 : 0) + (win ? 2 : 0), coins:win ? 60 : Math.min(40, 10 + 5 * G.floor)};
+  SAVE.gems += G.earn.gems; SAVE.tickets += G.earn.tickets; SAVE.amu.coins += G.earn.coins; persist();
   C = E = null; screen = win ? 'victory' : 'over'; render();
 }
-const earnHTML = () => `<div class="box" style="text-align:center">รางวัลจบรอบ: 💎 +${G.earn.gems}${G.earn.tickets ? ` · 🎫 +${G.earn.tickets}` : ''}</div>`;
+const earnHTML = () => `<div class="box" style="text-align:center">รางวัลจบรอบ: 💎 +${G.earn.gems}${G.earn.tickets ? ` · 🎫 +${G.earn.tickets}` : ''} · 🪙 +${G.earn.coins}</div>`;
 
 // ================= ระบบต่อสู้ =================
 function startCombat(eid) {
@@ -735,23 +846,25 @@ function startCombat(eid) {
   E = {...d, hp, maxHp:hp, block:0, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge;
   C = {draw:shuffle(G.deck), hand:[], discard:[], exhaust:[], maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0,
-       thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, discarded:0, recUsed:false,
+       thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, discarded:0, recUsed:false, gloveUsed:0,
        traps:[], starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
 function startTurn() {
   const m = G.mods;
-  C.turn++; C.played = 0; C.atkCount = 0; C.zeroDrawn = 0; C.discarded = 0; C.recUsed = false;
+  C.turn++; C.played = 0; C.atkCount = 0; C.zeroDrawn = 0; C.discarded = 0; C.recUsed = false; C.gloveUsed = 0;
   const first = C.turn === 1, third = C.turn % 3 === 0;
   if (!C.fortress) C.block = 0;
   // เกจพลังงาน: เริ่มเต็ม แล้วฟื้นทุกต้นเทิร์น ไม่เกินเพดาน
   if (!first) gainE(REGEN, false);
+  if (m.ringEvery && C.turn % m.ringEvery === 0) gainE(1);
   if (third && m.energyEvery3) gainE(m.energyEvery3);
   const sunTurn = C.turn % 6 === 0;
   if (sunTurn && m.sunFull) { C.energy = C.maxE; fx('player', '☀️ เกจเต็ม', '#ffd76a'); }
   if (m.drain) { G.hp = Math.max(1, G.hp - m.drain); fx('player', `😈 -${m.drain}`, '#ff6b6b'); }
   if (first) {
     if (m.startBlock) block(m.startBlock);
+    if (m.lowHpBlock && G.hp < G.maxHp * .5) block(m.lowHpBlock);
     if (m.startStr) { C.str += m.startStr; fx('player', `💪 +${m.startStr}`, '#ffb347'); }
     if (m.startThorns) C.thorns += m.startThorns;
     if (m.startEnemyDmg) hurtEnemy(m.startEnemyDmg);
@@ -797,6 +910,7 @@ function discardCard(i) {
   if (c.dis && c.dis.k === 'rec') {
     gainE(c.dis.n + b.rec);
     C.recUsed = true;
+    if (C.gloveUsed < m.gloveTimes && C.turn % 2 === 0) { C.gloveUsed++; if (m.gloveBlock) block(m.gloveBlock); if (m.gloveDraw) draw(m.gloveDraw); }
   } else if (c.dis && c.dis.k === 'trap') {
     C.traps.push({id:c.id, on:c.dis.on});
     fx('player', `⏳ วางกับดัก`, '#cfe3ff');
@@ -831,6 +945,7 @@ function endTurn() {
   if (C.busy) return;
   C.busy = true;
   C.sel = null; C.played = 0;                // ไพ่ที่เหลืออยู่ในมือต่อ
+  if (G.mods.turnEndHeal && C.turn % 2 === 0) heal(G.mods.turnEndHeal);
   render();
   setTimeout(enemyTurn, 450);
 }
@@ -843,6 +958,7 @@ function enemyTurn() {
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
   if (it.atk) {
     fireTraps('hit');
+    if (m.pinHit && (E.turn + 1) % m.pinEvery === 0) hurtEnemy(m.pinHit);
     for (let h = 0; h < (it.hits || 1); h++) {
       let d = enemyDmg(it.atk);
       if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
@@ -1048,6 +1164,16 @@ function showGuide() {
     <li>ครบ 3 ใบ ปลดล็อก <b>ร่างที่สอง</b> (บางใบ) · เกิน 7 ใบได้ผงดวงดาว ใช้สร้างไพ่ที่ต้องการ</li>
     <li>จบรอบ (แพ้ก็ได้) ได้เพชรและตั๋ว</li></ul>
 
+    <h3>💍 เครื่องราง</h3>
+    <ul><li>เครื่องรางมี <b>12 ชนิด 4 ระดับ</b> (I สามัญ · II ดี · III หายาก · IV ตำนาน) เก็บถาวร ใช้ได้ทุกรอบ</li>
+    <li>ก่อนออกผจญภัย <b>สวมใส่ได้ 2 ช่อง</b> (ชนิดเดียวกันใส่ซ้ำไม่ได้) จากหน้า "💍 เครื่องราง" หรือหน้าสรุปไพ่</li>
+    <li>เครื่องรางเป็นตัวช่วยเรื่อง <b>ฟื้นตัว ป้องกัน จังหวะ และทรัพยากร</b> ไม่ใช่ดาเมจตรง ๆ</li></ul>
+    วิธีได้มา ที่ <b>🔨 ร้านช่างตี</b>:
+    <ul><li><b>ซื้อระดับ I</b> ด้วย 🪙 เหรียญ (ได้จากการเล่นจบรอบ ไม่สุ่ม)</li>
+    <li><b>รวมเครื่องราง</b> ชนิดเดียวกันระดับเดียวกัน เป็นระดับถัดไป (I→II ใช้ 4 · II→III ใช้ 6 · III→IV ใช้ 9 ชิ้น) สำเร็จแน่นอน</li>
+    <li><b>สุ่มด้วยเพชร</b> ได้ระดับ II ขึ้นไปโดยตรง · มี pity รับประกันระดับ IV (ต้นแบบนี้ไม่มีการเก็บเงินจริง)</li>
+    <li>ชิ้นที่สวมใส่อยู่ ถูกนำไปรวมไม่ได้</li></ul>
+
     <h3>💡 เคล็ดลับสู้บอส</h3>
     <ul><li>มังกรเพิ่มพลังเรื่อย ๆ ยิ่งสู้นานยิ่งอันตราย ต้องตีให้จบเร็ว</li>
     <li>เทิร์นที่มันเพิ่มพลังหรือตั้งเกราะ คือจังหวะบุก</li>
@@ -1070,7 +1196,8 @@ const topbar = () => `<div class="topbar">
   <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button></div>
   ${G.arc ? `<button class="arcbar" onclick="event.stopPropagation();showMyArcana()">🔮
     ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].icon}</span>`).join('')}
-    <span style="opacity:.7">แตะเพื่อดูไพ่</span></button>` : ''}`;
+    <span style="opacity:.7">แตะเพื่อดูไพ่</span></button>` : ''}
+  ${G.amu && G.amu.length ? `<div class="arcbar">💍 ${G.amu.map(e => `<button class="ai" onclick="event.stopPropagation();showAmuInfo('${e.id}',${e.tier})">${AMU[e.id].icon}<small style="font-size:9px;color:${TCOLOR[e.tier]}">${TROM[e.tier]}</small></button>`).join(' ')}<span style="opacity:.7">แตะเพื่อดู</span></div>` : ''}`;
 
 const SCREENS = {
   title: () => `<div class="screen" style="justify-content:center">
@@ -1080,6 +1207,8 @@ const SCREENS = {
     ${walletHTML()}
     <button class="btn" onclick="beginArcana()">🔮 ดูดวงแล้วออกผจญภัย</button>
     <button class="btn sec" onclick="screen='shrine';render()">🌟 วิหารดวงดาว (สุ่มไพ่)</button>
+    <button class="btn sec" onclick="amuBack='title';screen='amulets';render()">💍 เครื่องราง (ใส่ ${SAVE.amu.equip.filter(Boolean).length}/2)</button>
+    <button class="btn sec" onclick="screen='forge';render()">🔨 ร้านช่างตี (ซื้อ/สุ่ม/รวมเครื่องราง)</button>
     <button class="btn sec" onclick="screen='book';render()">📚 สมุดไพ่ (${Object.keys(SAVE.owned).length}/78)</button>
     <button class="btn sec" onclick="showGallery()">📖 การ์ดอัศวินทั้งหมด 30 ใบ</button>
     <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น (ฉบับเต็ม)</button>
@@ -1101,6 +1230,8 @@ const SCREENS = {
       <h2>🔮 ไพ่ประจำรอบของคุณ</h2>
       <div class="grid">${[AR.major, ...AR.minors].map((e, k) => `<div class="shopitem">${tarotHTML(e, k ? AR.major : null, 'small')}
         ${canAlt(e.id) ? `<button class="link-btn" onclick="toggleRunForm(${k})">🔁 สลับร่าง</button>` : ''}</div>`).join('')}</div>
+      <div class="chosen">💍 ${equipText()}</div>
+      <button class="btn sec" onclick="amuBack='arcana';screen='amulets';render()">💍 จัดเครื่องราง</button>
       <button class="btn" onclick="newRun(AR)">⚔️ ออกผจญภัย</button>
       <button class="link-btn" onclick="beginArcana()">🧪 ดูดวงใหม่ (สำหรับทดสอบต้นแบบ)</button></div>`;
     const isMajor = AR.step === 0;
@@ -1116,6 +1247,39 @@ const SCREENS = {
       <div class="muted">🔻 ไพ่กลับหัว (โอกาส ${pct(REV_CHANCE)}): ผลแรงขึ้น แต่มีข้อเสีย</div>
     </div>`;
   },
+
+  amulets: () => `<div class="screen">
+    <h2>💍 เครื่องราง</h2>${walletHTML()}
+    <div class="muted">ใส่ได้ 2 ช่อง (ชนิดเดียวกันใส่ซ้ำไม่ได้) · แตะระดับเพื่อดู ใส่ หรือรวม<br>รวม ${MERGE_NEED.map((n, k) => `${TROM[k + 1]}→${TROM[k + 2]} ใช้ ${n}`).join(' · ')} ชิ้น</div>
+    <div class="slots">${SAVE.amu.equip.map((e, k) => e
+      ? `<div class="aslot filled" style="--tc:${TCOLOR[e.tier]}" onclick="showAmu('${e.id}',${e.tier})">${AMU[e.id].icon}<small style="color:${TCOLOR[e.tier]}">${TROM[e.tier]}</small></div>`
+      : `<div class="aslot">+<small>ช่อง ${k + 1}</small></div>`).join('')}</div>
+    ${AMUS.map(a => `<div class="amu"><span class="ai2">${a.icon}</span><div class="ainfo"><b>${a.name}</b><small>${a.s}</small></div>
+      <div class="tchips">${[1, 2, 3, 4].map(t => `<button class="tchip t${t} ${invN(a.id, t) ? '' : 'zero'} ${isEquip(a.id, t) ? 'on' : ''}" onclick="showAmu('${a.id}',${t})">${TROM[t]}<small>×${invN(a.id, t)}</small></button>`).join('')}</div></div>`).join('')}
+    <div class="startbar" style="gap:8px">
+      <button class="btn sec" onclick="screen='forge';render()">🔨 ร้านช่างตี</button>
+      <button class="btn" onclick="screen=amuBack;render()">เสร็จ</button></div>
+  </div>`,
+
+  forge: () => `<div class="screen">
+    <h2>🔨 ร้านช่างตี</h2>${walletHTML()}
+    <div class="box muted" style="text-align:left">
+      <b>ระดับ I:</b> ซื้อตรง ๆ ด้วย 🪙 ${AMU_PRICE} (ไม่สุ่ม) · ได้ 🪙 จากการเล่นจบรอบ<br>
+      <b>รวมเครื่องราง:</b> ${MERGE_NEED.map((n, k) => `${TROM[k + 1]}→${TROM[k + 2]} ใช้ ${n} ชิ้น`).join(' · ')} (สำเร็จแน่นอน)<br>
+      <b>สุ่มด้วยเพชร</b> (💎 ${AMU_PULL}/ครั้ง): ระดับ II ${AMU_RATES.t2}% · III ${AMU_RATES.t3}% · IV ${AMU_RATES.t4}%<br>
+      <b>Pity:</b> ครบ ${AMU_PITY} ครั้งไม่ได้ระดับ IV ได้แน่นอน (นับแล้ว ${SAVE.amu.pity}/${AMU_PITY})</div>
+    <div class="svc">
+      <button onclick="pullAmu(1)">💎 สุ่ม 1<br><small>${AMU_PULL} เพชร</small></button>
+      <button onclick="pullAmu(10)">💎 สุ่ม 10<br><small>${AMU_PULL * 10} เพชร</small></button>
+      <button onclick="screen='shrine';render()">💎 เติมเพชร<br><small>(จำลอง)</small></button></div>
+    <div class="sect">ซื้อระดับ I · 🪙 ${AMU_PRICE}</div>
+    ${AMUS.map(a => `<div class="amu"><span class="ai2">${a.icon}</span><div class="ainfo"><b>${a.name}</b><small>${amuText(a.id, 1)} · มี ×${invN(a.id, 1)}</small></div>
+      <button class="btn" style="padding:7px 12px;font-size:13px" onclick="buyAmu('${a.id}')">🪙 ${AMU_PRICE}</button></div>`).join('')}
+    <div class="muted">ราคาและอัตราสุ่มเป็นค่าตั้งต้น ⚠ ต้นแบบนี้ไม่มีการเก็บเงินจริง</div>
+    <button class="link-btn" onclick="SAVE.amu.coins+=1000;persist();render()">🧪 ทดสอบ: +1,000 🪙</button>
+    <div class="startbar"><button class="btn sec" onclick="amuBack='title';screen='amulets';render()">💍 เครื่องราง</button>
+      <button class="btn sec" onclick="screen='title';render()">กลับ</button></div>
+  </div>`,
 
   shrine: () => `<div class="screen">
     <h2>🌟 วิหารดวงดาว</h2>${walletHTML()}
