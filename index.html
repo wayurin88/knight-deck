@@ -675,9 +675,9 @@ function cardHTML(id, cls = '', attrs = '') {
     ${c.dis ? `<div class="dis ${c.dis.k}">▼ ${disText(c)}</div>` : ''}</div>`;
 }
 // ================= ภาพไพ่ (โฟลเดอร์ art/) =================
-// ตั้งชื่อไฟล์: art/<id>.webp (ภาพปกติ) · art/<id>-alt.webp (ภาพแบบที่สอง ใช้เมื่อมีไพ่ ≥ 5 ใบ) · รายละเอียดดู art/README.md
+// ตั้งชื่อไฟล์: art/<id>.jpg (ภาพปกติ) · art/<id>-alt.jpg (ภาพแบบที่สอง ใช้เมื่อมีไพ่ ≥ 5 ใบ) · รายละเอียดดู art/README.md
 // ไม่มีไฟล์ = ใช้ไอคอนอีโมจิเดิม · ไม่มีภาพแบบที่สอง = ใช้ภาพปกติ
-const ART = {dir:'art/', ext:'webp', bad:new Set(), ok:new Set(), altAt:5};
+const ART = {dir:'art/', ext:'jpg', bad:new Set(), ok:new Set(), altAt:5};
 const artUrl = (id, alt) => `${ART.dir}${id}${alt ? '-alt' : ''}.${ART.ext}`;
 const artChain = id => (copies(id) >= ART.altAt ? [artUrl(id, true)] : []).concat(artUrl(id)).filter(u => !ART.bad.has(u));
 function artImg(id, cls = 'tartimg') {
