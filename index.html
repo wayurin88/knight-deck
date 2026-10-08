@@ -98,7 +98,12 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 
 /* ---------- ต่อสู้ ---------- */
 .enemy-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;min-height:0}
-.intent{background:rgba(0,0,0,.55);padding:5px 12px;border-radius:14px;font-size:15px;border:1px solid rgba(255,255,255,.15)}
+.intent{background:rgba(0,0,0,.55);padding:5px 12px;border-radius:14px;font-size:15px;border:1px solid rgba(255,255,255,.15);text-align:center;line-height:1.35}
+.intent .next{font-size:12px;opacity:.65}
+.guide h3{color:var(--gold);font-size:16px;margin:12px 0 4px}
+.guide{width:100%;font-size:14px;line-height:1.6}
+.guide ul{padding-left:18px}
+.guide .ex{background:rgba(255,255,255,.06);border-left:3px solid var(--gold);padding:6px 10px;border-radius:6px;font-size:13px;margin:6px 0}
 .enemy-art{font-size:86px;line-height:1.1;filter:drop-shadow(0 6px 12px #000)}
 .ename{font-weight:700;font-size:16px}
 .ename small{color:#ff9a6a;font-weight:400}
@@ -850,12 +855,19 @@ function enemyTurn() {
   if (E.hp <= 0) return setTimeout(winCombat, 700);
   setTimeout(() => { C.busy = false; startTurn(); }, 650);
 }
+// ข้อความท่าศัตรู (ตัวเลขรวมพลังและอ่อนแรงแล้ว)
+function intentParts(it, str, weak) {
+  const parts = [];
+  if (it.atk) parts.push(`🗡️ ${Math.floor((it.atk + str) * (weak > 0 ? .75 : 1))}${it.hits > 1 ? ' ×' + it.hits : ''}`);
+  if (it.block) parts.push(`🛡️ เกราะ ${it.block}`);
+  if (it.str) parts.push(`💪 พลัง +${it.str}`);
+  return parts.join(' + ');
+}
 function intentText() {
-  const it = E.pattern[E.turn % E.pattern.length], parts = [];
-  if (it.atk) parts.push(`🗡️ ${enemyDmg(it.atk)}${it.hits > 1 ? ' ×' + it.hits : ''}`);
-  if (it.block) parts.push('🛡️ ป้องกัน');
-  if (it.str) parts.push('💪 เพิ่มพลัง');
-  return 'ศัตรูจะ: ' + parts.join(' + ');
+  const n = E.pattern.length, now = E.pattern[E.turn % n], next = E.pattern[(E.turn + 1) % n];
+  // ท่าถัดไป: รวมพลังที่ศัตรูจะได้จากท่านี้ และอ่อนแรงที่จะลดลง 1
+  const nextTxt = intentParts(next, E.str + (now.str || 0), Math.max(0, E.weak - 1));
+  return `<div class="now">ตอนนี้: <b>${intentParts(now, E.str, E.weak)}</b></div><div class="next">ถัดไป: ${nextTxt}</div>`;
 }
 
 // ================= รางวัล (สุ่มเลือก 1 + ระบบ pity) =================
@@ -965,6 +977,70 @@ function arcRow(A) {
     <b>${A.no} · ${A.en}</b> — ${A.th} <small>${EL[A.el].ic} ${EL[A.el].th}</small><br>
     ${A.d(A.v)}<br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${BAD[A.bad].d}</small></span></div>`;
 }
+function showGuide() {
+  openModal(`<h2>📘 วิธีเล่น Knight's Deck</h2><div class="guide">
+    <h3>🎯 เป้าหมาย</h3>
+    ผ่านเส้นทาง 8 ชั้น (ต่อสู้ · ร้านค้า · ศัตรูพิเศษ · กองไฟ) แล้วโค่น <b>มังกรเพลิง</b> ที่ชั้นสุดท้าย
+    HP ไม่ฟื้นเองระหว่างชั้น ต้องรักษาไว้ให้ดี
+
+    <h3>🔮 ก่อนออกเดินทาง: ดูดวง</h3>
+    <ul><li>เลือก <b>Major Arcana</b> 1 จาก 3 ใบ เป็นพลังหลักตลอดรอบ</li>
+    <li>เลือก <b>Minor Arcana</b> อีก 2 ใบ (ครั้งละ 1 จาก 3)</li>
+    <li>ไพ่ <b>กลับหัว 🔻</b> (โอกาส 30%) ผลแรงขึ้น แต่มีข้อเสีย ⚠</li>
+    <li>Minor ที่ <b>ธาตุเดียวกับ Major</b> ได้ผล +25%</li>
+    <li>สุ่มเฉพาะจากไพ่ที่คุณมีในสมุดไพ่</li></ul>
+
+    <h3>⚡ เกจพลังงาน</h3>
+    <ul><li>สูงสุด 5 · เริ่มการต่อสู้เต็ม · <b>ฟื้น +1 ทุกต้นเทิร์น</b></li>
+    <li>พลังงานที่ไม่ได้ใช้ <b>เก็บไว้เทิร์นหน้าได้</b></li></ul>
+
+    <h3>🃏 การใช้และทิ้งการ์ด</h3>
+    <ul><li><b>ลากขึ้น ▲</b> = ใช้การ์ด (จ่ายพลังงานตามตัวเลขมุมซ้ายบน)</li>
+    <li><b>ลากลง ▼</b> = ทิ้งการ์ด (ไม่เสียพลังงาน) · หรือแตะการ์ดแล้วกดปุ่ม</li>
+    <li>ออกไพ่ได้ <b>3 ใบต่อเทิร์น</b> · การทิ้ง <b>ไม่นับ</b></li>
+    <li>ไพ่ที่ไม่ได้ใช้ <b>อยู่ในมือต่อ</b> · ต้นเทิร์นเติมมือให้ครบ 5 (มือสูงสุด 7)</li></ul>
+    ผลเมื่อทิ้ง ดูแถบล่างของการ์ด:
+    <ul><li><b>🔋 คืนพลัง</b> ทิ้งแล้วได้พลังงานคืนทันที</li>
+    <li><b>⏳ กับดัก</b> ทิ้งแล้ววางไว้ ทำงานเองเมื่อเข้าเงื่อนไข (เช่น "ถูกโจมตี") · วางได้พร้อมกัน 2 อัน · อยู่ได้ถึงต้นเทิร์นหน้า</li>
+    <li><b>ไม่มีป้าย</b> ทิ้งแล้วไม่มีผล ควรใช้จริง</li></ul>
+
+    <h3>👁️ อ่านท่าศัตรู (สำคัญมาก)</h3>
+    กล่องเหนือศัตรูบอก 2 บรรทัด:
+    <ul><li><b>ตอนนี้</b> = สิ่งที่ศัตรูจะทำหลังคุณจบเทิร์นนี้</li>
+    <li><b>ถัดไป</b> = ท่าในเทิร์นต่อไป (คำนวณพลังที่มันกำลังจะได้รวมไว้แล้ว)</li></ul>
+    <ul><li>🗡️ 12 = โจมตี 12 · 🗡️ 5 ×3 = ตี 3 ครั้ง ครั้งละ 5</li>
+    <li>🛡️ เกราะ 12 = ศัตรูได้เกราะ ต้องตีทะลุก่อนถึง HP</li>
+    <li>💪 พลัง +2 = ทุกการโจมตีหลังจากนี้แรงขึ้น +2 <b>ถาวร</b></li></ul>
+    <div class="ex">ตัวอย่าง: ตอนนี้ "💪 พลัง +2" ถัดไป "🗡️ 20"<br>
+    → เทิร์นนี้ศัตรูไม่ตี ใช้โจมตีเต็มที่ และเก็บการ์ดเกราะไว้ในมือ<br>
+    → ทิ้งกำแพงโล่วางกับดักเตรียมไว้รับ 20 ในเทิร์นหน้า</div>
+
+    <h3>📋 สถานะ</h3>
+    <ul><li>🛡 <b>เกราะ</b> กันดาเมจ · หายเมื่อเริ่มเทิร์นของคุณ</li>
+    <li>💪 <b>พลัง</b> เพิ่มดาเมจทุกการโจมตี</li>
+    <li>🎯 <b>เปราะบาง</b> รับดาเมจ +50% (นับลดทุกเทิร์น)</li>
+    <li>🥀 <b>อ่อนแรง</b> ทำดาเมจ −25% (นับลดทุกเทิร์น)</li>
+    <li>⛓️ <b>หนาม</b> ถูกตีแล้วสะท้อนดาเมจกลับ</li>
+    <li><b>สลาย</b> การ์ดที่ใช้แล้วหายไปจนจบการต่อสู้</li></ul>
+
+    <h3>🗺️ ระหว่างทาง</h3>
+    <ul><li><b>ชนะ</b> ได้ทอง และเลือกการ์ดใหม่ 1 ใบ (หรือข้ามเพื่อให้สำรับบาง)</li>
+    <li><b>ร้านค้า</b> ซื้อการ์ด · ซองสุ่ม · ลบการ์ดที่ไม่ต้องการ</li>
+    <li><b>กองไฟ</b> ฟื้น HP 30% หรือ ลบการ์ด 1 ใบ</li></ul>
+
+    <h3>🌟 นอกรอบ</h3>
+    <ul><li><b>วิหารดวงดาว</b> สุ่มไพ่อาร์คานาด้วยตั๋วหรือเพชร (ต้นแบบนี้ไม่มีการเก็บเงินจริง)</li>
+    <li><b>ไพ่ซ้ำ</b> ปลุกพลังภาพไพ่ (×2 กรอบเงิน · ×3 กรอบทอง · ×5 ภาพพิเศษ · ×7 เคลื่อนไหว)</li>
+    <li>ครบ 3 ใบ ปลดล็อก <b>ร่างที่สอง</b> (บางใบ) · เกิน 7 ใบได้ผงดวงดาว ใช้สร้างไพ่ที่ต้องการ</li>
+    <li>จบรอบ (แพ้ก็ได้) ได้เพชรและตั๋ว</li></ul>
+
+    <h3>💡 เคล็ดลับสู้บอส</h3>
+    <ul><li>มังกรเพิ่มพลังเรื่อย ๆ ยิ่งสู้นานยิ่งอันตราย ต้องตีให้จบเร็ว</li>
+    <li>เทิร์นที่มันเพิ่มพลังหรือตั้งเกราะ คือจังหวะบุก</li>
+    <li>ดูบรรทัด "ถัดไป" แล้วเก็บการ์ดเกราะกับพลังงานไว้รับท่าแรง</li>
+    <li>เข้าห้องบอสด้วย HP มากที่สุดเท่าที่ทำได้ · กองไฟก่อนบอสเลือกฟื้น HP</li></ul>
+  </div><button class="btn sec close" onclick="closeModal()">ปิด</button>`);
+}
 function showMyArcana() {
   const a = G.arc;
   openModal(`<div style="flex:1"></div><h2>🔮 ไพ่ประจำรอบของคุณ</h2>
@@ -976,7 +1052,8 @@ function showMyArcana() {
 const topbar = () => `<div class="topbar">
   <span class="pill">❤ ${G.hp}/${G.maxHp}</span><span class="pill">💰 ${G.gold}</span>
   <span class="pill">ชั้น ${Math.min(G.floor + 1, MAP.length)}/${MAP.length}</span>
-  <button class="pill" onclick="showDeck()">🂠 ${G.deck.length}</button></div>
+  <button class="pill" onclick="showDeck()">🂠 ${G.deck.length}</button>
+  <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button></div>
   ${G.arc ? `<button class="arcbar" onclick="event.stopPropagation();showMyArcana()">🔮
     ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].icon}</span>`).join('')}
     <span style="opacity:.7">แตะเพื่อดูไพ่</span></button>` : ''}`;
@@ -991,8 +1068,9 @@ const SCREENS = {
     <button class="btn sec" onclick="screen='shrine';render()">🌟 วิหารดวงดาว (สุ่มไพ่)</button>
     <button class="btn sec" onclick="screen='book';render()">📚 สมุดไพ่ (${Object.keys(SAVE.owned).length}/78)</button>
     <button class="btn sec" onclick="showGallery()">📖 การ์ดอัศวินทั้งหมด 30 ใบ</button>
+    <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น (ฉบับเต็ม)</button>
     <div class="box">
-      <b>วิธีเล่น</b><br>
+      <b>สรุปวิธีเล่น</b><br>
       • ก่อนออกเดินทาง เลือก <b>Major Arcana</b> 1 จาก 3 ใบ แล้วเลือก <b>Minor Arcana</b> อีก 2 ใบ (สุ่มจากไพ่ที่คุณมี)<br>
       • สุ่มไพ่เพิ่มที่ <b>วิหารดวงดาว</b> · ไพ่ซ้ำปลุกพลังภาพไพ่ และครบ 3 ใบปลดล็อก <b>ร่างที่สอง</b> (บางใบ)<br>
       • ไพ่อาจออก <b>กลับหัว</b>: ผลแรงขึ้นแต่มีข้อเสีย · Minor ธาตุเดียวกับ Major ได้ผล +25%<br>
@@ -1000,7 +1078,7 @@ const SCREENS = {
       • <b>ลากขึ้น</b> = ใช้การ์ด · <b>ลากลง</b> = ทิ้งการ์ด (หรือแตะการ์ดแล้วกดปุ่ม)<br>
       • ทิ้งการ์ด 🔋 ได้พลังงานคืน · ทิ้งการ์ด ⏳ วางกับดักที่ทำงานเอง (สูงสุด 2 อัน)<br>
       • ออกไพ่ได้ <b>3 ใบต่อเทิร์น</b> (การทิ้งไม่นับ) · ไพ่ที่ไม่ได้ใช้<b>อยู่ในมือต่อ</b> ต้นเทิร์นเติมให้ครบ 5 (มือสูงสุด 7)<br>
-      • ดูไอคอนเหนือศัตรูเพื่อรู้ว่ามันจะทำอะไร<br>
+      • กล่องเหนือศัตรูบอกท่า <b>ตอนนี้</b> และ <b>ถัดไป</b> ใช้วางแผนล่วงหน้า 2 เทิร์น<br>
       • ผ่าน 8 ชั้นแล้วโค่นมังกรเพลิงให้ได้!
     </div></div>`,
 
