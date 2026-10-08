@@ -36,6 +36,8 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .card .ctype{text-align:center;opacity:.7;font-size:calc(var(--w)*.08)}
 .card .cdesc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.25;padding:1px}
 .card .ex{font-size:calc(var(--w)*.08);color:#ffb38a;font-style:italic}
+.card .dis{font-size:calc(var(--w)*.078);text-align:center;line-height:1.2;padding:2px 1px 0;border-top:1px dashed rgba(255,255,255,.2);color:#cfe3ff}
+.card .dis.rec{color:#ffe27a}
 .card .up{color:#7ef08a;font-weight:800}.card .down{color:#ff8a7a;font-weight:800}
 .card.cant{filter:grayscale(.75) brightness(.7)}
 .grid{display:flex;flex-wrap:wrap;gap:14px 12px;justify-content:center;padding:6px 0}
@@ -115,7 +117,11 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .hand .card{--w:82px}
 .hand .card.sel{transform:translateY(-46px) scale(1.45);z-index:20}
 .hand .card.drag{z-index:30;transition:none}
-.hint{text-align:center;font-size:12px;opacity:.65;height:16px}
+.hint{display:flex;justify-content:center;align-items:center;gap:8px;font-size:12px;height:34px;padding:0 8px}
+.hint .mini{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 9px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+.hint .mini.up{border-color:#e6b422}
+.hint .tip{opacity:.6}
+.st.trap{background:#2d3f5c}
 .controls{display:flex;justify-content:space-between;align-items:center;padding:4px 12px 14px}
 .pile{font-size:13px;background:rgba(0,0,0,.45);padding:7px 11px;border-radius:10px}
 .shake{animation:shake .35s}
@@ -157,7 +163,8 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 const RAR = {starter:'พื้นฐาน', common:'ธรรมดา', uncommon:'หายาก', rare:'ตำนาน'};
 const RCOLOR = {starter:'#aaa', common:'#9fc0dd', uncommon:'#b07cf0', rare:'#f2c443'};
 const TYPE = {atk:'โจมตี', skill:'ทักษะ', power:'พลัง'};
-const MAXE = 3, HAND = 5, REV_CHANCE = 0.3;
+const MAXE = 5, HAND = 5, REV_CHANCE = 0.3, TRAP_LIMIT = 2;
+let REGEN = 1;   // พลังงานที่ฟื้นทุกต้นเทิร์น
 
 let screen = 'title', G = null, C = null, E = null, uidN = 0;
 
@@ -273,11 +280,11 @@ const CARDS = [
   {id:'entrench', name:'ผนึกโล่', cost:2, type:'skill', rar:'uncommon', art:'💠',
    desc:()=>`เกราะ ×2`, play(){ block(C.block); }},
   {id:'charge', name:'ทะยานจู่โจม', cost:1, type:'atk', rar:'uncommon', art:'🐎',
-   desc:()=>`ดาเมจ ${D(7)}<br>ศัตรูเปราะบาง:<br>+1 พลังงาน`, play(){ const v=E.vuln>0; atk(7); if(v) C.energy++; }},
+   desc:()=>`ดาเมจ ${D(7)}<br>ศัตรูเปราะบาง:<br>+1 พลังงาน`, play(){ const v=E.vuln>0; atk(7); if(v) gainE(1); }},
   {id:'probe', name:'หยั่งเชิง', cost:0, type:'skill', rar:'uncommon', art:'👁️', exhaust:true,
    desc:()=>`เปราะบาง 2`, play(){ applyE('vuln',2); }},
   {id:'second', name:'ฟื้นกำลัง', cost:0, type:'skill', rar:'uncommon', art:'💨', exhaust:true,
-   desc:()=>`+2 พลังงาน`, play(){ C.energy+=2; }},
+   desc:()=>`+2 พลังงาน`, play(){ gainE(2); }},
   {id:'blood', name:'ดาบโลหิต', cost:1, type:'atk', rar:'uncommon', art:'🍷',
    desc:()=>`เสีย HP 3<br>ดาเมจ ${D(15)}`, play(){ G.hp=Math.max(1,G.hp-3); fx('player','-3','#ff6b6b'); atk(15); }},
 
@@ -291,6 +298,23 @@ const CARDS = [
   {id:'miracle', name:'ปาฏิหาริย์แห่งแสง', cost:1, type:'skill', rar:'rare', art:'✨', exhaust:true,
    desc:()=>`ฟื้น HP 10<br>เกราะ ${B(10)}`, play(){ heal(10); block(10); }},
 ];
+// ผลเมื่อลากทิ้ง: rec = 🔋 คืนพลัง · trap = ⏳ เตรียมการ (on: hit=ถูกโจมตี, end=จบเทิร์นศัตรู, next=ต้นเทิร์นหน้า, death=จะตาย)
+const DIS = {
+  strike:{k:'rec', n:1}, twin:{k:'rec', n:1}, expose:{k:'rec', n:1}, reopen:{k:'rec', n:1},
+  plan:{k:'rec', n:1}, allin:{k:'rec', n:1}, charge:{k:'rec', n:1}, blood:{k:'rec', n:1},
+  defend:    {k:'trap', on:'hit',   s:'ถูกโจมตี: เกราะ 4', f(){ block(4); }},
+  slashguard:{k:'trap', on:'hit',   s:'ถูกโจมตี: เกราะ 3 + สวน 3', f(){ block(3); hurtEnemy(3); }},
+  wall:      {k:'trap', on:'hit',   s:'ถูกโจมตี: เกราะ 9', f(){ block(9); }},
+  roar:      {k:'trap', on:'hit',   s:'ถูกโจมตี: ศัตรูอ่อนแรง 1', f(){ applyE('weak',1); }},
+  spikes:    {k:'trap', on:'hit',   s:'ถูกโจมตี: สะท้อน 5', f(){ hurtEnemy(5); }},
+  entrench:  {k:'trap', on:'hit',   s:'ถูกโจมตี: เกราะ +50%', f(){ block(Math.floor(C.block/2)); }},
+  steady:    {k:'trap', on:'next',  s:'ต้นเทิร์นหน้า: จั่ว +1', f(){ draw(1); }},
+  prayer:    {k:'trap', on:'end',   s:'HP ต่ำกว่าครึ่ง: ฟื้น 5', f(){ if (G.hp >= G.maxHp/2) return false; heal(5); }},
+  judgment:  {k:'trap', on:'end',   s:'เกราะไม่แตก: ดาเมจเท่าเกราะ', f(){ if (C.block <= 0) return false; hurtEnemy(C.block); }},
+  miracle:   {k:'trap', on:'death', s:'จะตาย: รอด HP 1 แล้วฟื้น 10', f(){ G.hp = 1; heal(10); }},
+};
+CARDS.forEach(c => c.dis = DIS[c.id] || null);
+const disText = c => !c.dis ? '' : c.dis.k === 'rec' ? `🔋 +${c.dis.n} พลังงาน` : `⏳ ${c.dis.s}`;
 const CARD = Object.fromEntries(CARDS.map(c => [c.id, c]));
 const POOL = {common:[], uncommon:[], rare:[]};
 CARDS.forEach(c => { if (POOL[c.rar]) POOL[c.rar].push(c.id); });
@@ -310,7 +334,7 @@ const BAD = {
   estr:   {d:'ศัตรูเริ่มการต่อสู้มีพลัง +1', f:m=>m.enemyStr+=1},
   shop:   {d:'ราคาร้านค้า +30%', f:m=>m.shopPct+=.3},
   nogold: {d:'เริ่มรอบไม่มีทอง', f:m=>m.goldStart-=999},
-  e1:     {d:'เทิร์นแรกพลังงาน −1', f:m=>m.turn1Energy-=1},
+  e1:     {d:'เริ่มการต่อสู้เกจ −1', f:m=>m.startGauge-=1},
   d1:     {d:'เทิร์นแรกจั่ว −1', f:m=>m.turn1Draw-=1},
   blk:    {d:'เกราะ −20%', f:m=>m.blockPct-=.2},
   dmg:    {d:'ดาเมจ −10%', f:m=>m.dmgPct-=.1},
@@ -320,25 +344,25 @@ const BAD = {
 };
 const MAJORS = [
   {no:'0',    en:'The Fool',          th:'คนเขลา',        el:'air',   icon:'🤹', v:1,   rv:2,   bad:'nogold', d:v=>`เริ่มรอบด้วยการ์ดตำนานสุ่ม ${v} ใบ · HP สูงสุด −10`, f:(m,v)=>{m.startRares+=v; m.maxHp-=10;}},
-  {no:'I',    en:'The Magician',      th:'นักเวท',        el:'air',   icon:'🎩', v:1,   rv:2,   bad:'hp',     d:v=>`เทิร์นแรกของทุกการต่อสู้ พลังงาน +${v}`, f:(m,v)=>m.turn1Energy+=v},
+  {no:'I',    en:'The Magician',      th:'นักเวท',        el:'air',   icon:'🎩', v:1,   rv:2,   bad:'hp',     d:v=>`เกจพลังงานสูงสุด +${v}`, f:(m,v)=>m.maxGauge+=v},
   {no:'II',   en:'The High Priestess',th:'นักบวชหญิง',    el:'water', icon:'📿', v:3,   rv:5,   bad:'estr',   d:v=>`มองเห็นการ์ด ${v} ใบถัดไปในกองจั่ว · เทิร์นแรกจั่ว +1`, f:(m,v)=>{m.seeTop=Math.max(m.seeTop,v); m.turn1Draw+=1;}},
   {no:'III',  en:'The Empress',       th:'จักรพรรดินี',    el:'earth', icon:'👑', v:6,   rv:10,  bad:'shop',   d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
   {no:'IV',   en:'The Emperor',       th:'จักรพรรดิ',      el:'earth', icon:'🏛️', v:10,  rv:16,  bad:'e1',     d:v=>`เริ่มการต่อสู้ได้เกราะ ${v}`, f:(m,v)=>m.startBlock+=v},
-  {no:'V',    en:'The Hierophant',    th:'ผู้นำศาสนา',     el:'water', icon:'⛪', v:4,   rv:7,   bad:'hp',     d:v=>`ใช้การ์ดที่สลาย ได้เกราะ ${v}`, f:(m,v)=>m.exhaustBlock+=v},
+  {no:'V',    en:'The Hierophant',    th:'ผู้นำศาสนา',     el:'water', icon:'⛪', v:3,   rv:5,   bad:'hp',     d:v=>`วางกับดักได้ 3 อัน · กับดักทำงานแล้วได้เกราะ ${v}`, f:(m,v)=>{m.trapSlots=1; m.trapBlock+=v;}},
   {no:'VI',   en:'The Lovers',        th:'คู่รัก',         el:'water', icon:'💞', v:.5,  rv:.8,  bad:'rew',    d:v=>`การ์ดใบที่ 2 ของทุกเทิร์น ผล ×${1+v}`, f:(m,v)=>m.secondMult+=v},
   {no:'VII',  en:'The Chariot',       th:'ราชรถ',         el:'fire',  icon:'🏇', v:5,   rv:8,   bad:'blk',    d:v=>`การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${v}`, f:(m,v)=>m.firstAtk+=v},
   {no:'VIII', en:'Strength',          th:'พลังแห่งใจ',     el:'fire',  icon:'🦁', v:2,   rv:3,   bad:'ehp',    d:v=>`เริ่มการต่อสู้ได้พลัง +${v}`, f:(m,v)=>m.startStr+=v},
   {no:'IX',   en:'The Hermit',        th:'ฤาษี',          el:'earth', icon:'🏮', v:12,  rv:15,  bad:'rest',   d:v=>`สำรับไม่เกิน ${v} ใบ: จั่ว +1 ทุกเทิร์น`, f:(m,v)=>m.hermit=Math.max(m.hermit,v)},
   {no:'X',    en:'Wheel of Fortune',  th:'กงล้อแห่งโชคชะตา', el:'earth', icon:'🎡', v:5,   rv:10,  bad:'shop',   d:v=>`รางวัลการ์ด +1 ตัวเลือก · โอกาสตำนาน +${v}%`, f:(m,v)=>{m.rewardChoices+=1; m.rareChance+=v;}},
   {no:'XI',   en:'Justice',           th:'ความยุติธรรม',   el:'air',   icon:'⚖️', v:.25, rv:.4,  bad:'estr',   d:v=>`ถูกโจมตี สะท้อนดาเมจกลับ ${pct(v)}`, f:(m,v)=>m.reflect+=v},
-  {no:'XII',  en:'The Hanged Man',    th:'คนแขวน',        el:'water', icon:'🙃', v:2,   rv:3,   bad:'d1',     d:v=>`จบเทิร์นโดยไม่ใช้การ์ด: เทิร์นหน้าพลังงาน +${v}`, f:(m,v)=>m.skipEnergy+=v},
+  {no:'XII',  en:'The Hanged Man',    th:'คนแขวน',        el:'water', icon:'🙃', v:1,   rv:2,   bad:'d1',     d:v=>`ทิ้งการ์ดใบแรกของเทิร์น ได้ ⚡ +${v} เพิ่ม`, f:(m,v)=>m.discardBonus+=v},
   {no:'XIII', en:'Death',             th:'ความตาย',       el:'fire',  icon:'💀', v:25,  rv:40,  bad:'hp',     d:v=>`ลบการ์ดที่ร้านค้าฟรี · ลบการ์ดแล้วได้ทอง ${v}`, f:(m,v)=>{m.freeRemove=true; m.removeGold+=v;}},
   {no:'XIV',  en:'Temperance',        th:'ความพอดี',      el:'water', icon:'⚗️', v:15,  rv:12,  bad:'dmg',    d:v=>`ไม่รับดาเมจเกิน ${v} ต่อการโจมตีหนึ่งครั้ง`, f:(m,v)=>m.dmgCap=m.dmgCap?Math.min(m.dmgCap,v):v},
   {no:'XV',   en:'The Devil',         th:'ปีศาจ',         el:'fire',  icon:'😈', v:.4,  rv:.6,  bad:'drain',  d:v=>`ดาเมจ +${pct(v)} · เสีย HP 2 ทุกเทิร์น`, f:(m,v)=>{m.dmgPct+=v; m.drain+=2;}},
   {no:'XVI',  en:'The Tower',         th:'หอคอย',         el:'fire',  icon:'🗼', v:12,  rv:20,  bad:'blk',    d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
   {no:'XVII', en:'The Star',          th:'ดวงดาว',        el:'air',   icon:'⭐', v:15,  rv:25,  bad:'ehp',    d:v=>`HP ต่ำกว่า 30% ครั้งแรกของการต่อสู้: ฟื้น ${v}`, f:(m,v)=>m.starHeal+=v},
   {no:'XVIII',en:'The Moon',          th:'ดวงจันทร์',      el:'water', icon:'🌕', v:2,   rv:3,   bad:'d1',     d:v=>`ศัตรูเริ่มการต่อสู้ด้วยอ่อนแรง ${v}`, f:(m,v)=>m.startEnemyWeak+=v},
-  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'fire',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 3 เทิร์น พลังงาน +1 และจั่ว +${v}`, f:(m,v)=>{m.energyEvery3+=1; m.drawEvery3+=v;}},
+  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'fire',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 3 เทิร์น เกจเต็ม และจั่ว +${v}`, f:(m,v)=>{m.sunFull=true; m.drawEvery3+=v;}},
   {no:'XX',   en:'Judgement',         th:'การพิพากษา',     el:'air',   icon:'📯', v:.3,  rv:.5,  bad:'estr',   d:v=>`ตายครั้งแรกในรอบ: ฟื้นคืนด้วย HP ${pct(v)}`, f:(m,v)=>m.revive=Math.max(m.revive,v)},
   {no:'XXI',  en:'The World',         th:'โลก',           el:'earth', icon:'🌍', v:.5,  rv:.8,  bad:'ehp',    d:v=>`ผลของไพ่ Minor ทั้ง 2 ใบ ×${1+v}`, f:()=>{}},
 ].map((M, i) => ({...M, id:'M' + i, major:true}));
@@ -364,7 +388,7 @@ const COURTS = {
     {en:'King', th:'ราชา', v:.15, rv:.25, d:v=>`เกราะ +${pct(v)}`, f:(m,v)=>m.blockPct+=v}],
   swords: [
     {en:'Page', th:'เด็กรับใช้', v:2, rv:3, d:v=>`เทิร์นแรกจั่ว +${v}`, f:(m,v)=>m.turn1Draw+=v},
-    {en:'Knight', th:'อัศวิน', v:1, rv:2, d:v=>`เทิร์นแรกพลังงาน +${v}`, f:(m,v)=>m.turn1Energy+=v},
+    {en:'Knight', th:'อัศวิน', v:1, rv:2, d:v=>`ทิ้งการ์ด 🔋 ครั้งแรกของเทิร์น ได้พลังงานเพิ่ม +${v}`, f:(m,v)=>m.recycleBonus+=v},
     {en:'Queen', th:'ราชินี', v:1, rv:2, d:v=>`ใช้การ์ดราคา 0: จั่ว 1 (สูงสุด ${v} ครั้ง/เทิร์น)`, f:(m,v)=>m.zeroDraw+=v},
     {en:'King', th:'ราชา', v:1, rv:2, d:v=>`ทุก 3 เทิร์น พลังงาน +${v}`, f:(m,v)=>m.energyEvery3+=v}],
   pentacles: [
@@ -414,12 +438,13 @@ function minorMult(major, e) {
   return k;
 }
 function buildMods(arc) {
-  const m = {maxHp:0, goldStart:0, startRares:0, turn1Energy:0, turn1Draw:0, seeTop:0, healWin:0, startBlock:0,
-    exhaustBlock:0, secondMult:0, firstAtk:0, startStr:0, hermit:0, rewardChoices:0, rareChance:0, reflect:0,
-    skipEnergy:0, freeRemove:false, removeGold:0, dmgCap:0, dmgPct:0, drain:0, startEnemyDmg:0, starHeal:0,
+  const m = {maxHp:0, goldStart:0, startRares:0, turn1Draw:0, seeTop:0, healWin:0, startBlock:0,
+    secondMult:0, firstAtk:0, startStr:0, hermit:0, rewardChoices:0, rareChance:0, reflect:0,
+    freeRemove:false, removeGold:0, dmgCap:0, dmgPct:0, drain:0, startEnemyDmg:0, starHeal:0,
     startEnemyWeak:0, energyEvery3:0, drawEvery3:0, revive:0, enemyHpPct:0, enemyStr:0, shopPct:0, blockPct:0,
     restMult:1, startThorns:0, vulnBonus:0, blockFlat:0, zeroDraw:0, goldMult:0,
-    allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0};
+    allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0,
+    maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false};
   if (!arc) return m;
   const M = eff(arc.major);
   M.f(m, arcValue(M, arc.major.rev));
@@ -485,7 +510,8 @@ function cardHTML(id, cls = '', attrs = '') {
   return `<div class="card r-${c.rar} t-${c.type} ${cls}" ${attrs}>
     <div class="cost">${c.cost}</div><div class="cname">${c.name}</div>
     <div class="art">${c.art}</div><div class="ctype">${TYPE[c.type]} · ${RAR[c.rar]}</div>
-    <div class="cdesc"><div>${c.desc()}</div>${c.exhaust ? '<div class="ex">สลาย (ใช้ได้ครั้งเดียว/การต่อสู้)</div>' : ''}</div></div>`;
+    <div class="cdesc"><div>${c.desc()}</div>${c.exhaust ? '<div class="ex">สลาย</div>' : ''}</div>
+    ${c.dis ? `<div class="dis ${c.dis.k}">▼ ${disText(c)}</div>` : ''}</div>`;
 }
 // ไพ่ทาโรต์ e = {id, rev}; major = Major ที่เลือกแล้ว (ใช้คำนวณโบนัสของ Minor)
 function tarotHTML(e, major = null, cls = '', attrs = '') {
@@ -689,18 +715,21 @@ const earnHTML = () => `<div class="box" style="text-align:center">รางว�
 function startCombat(eid) {
   const m = G.mods, d = ENEMIES[eid], hp = Math.round(rand(d.hp[0], d.hp[1]) * (1 + m.enemyHpPct));
   E = {...d, hp, maxHp:hp, block:0, str:m.enemyStr, vuln:0, weak:0, turn:0};
-  C = {draw:shuffle(G.deck), hand:[], discard:[], exhaust:[], energy:MAXE, block:0, str:0,
-       thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, skipBonus:0,
-       starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
+  const maxE = MAXE + m.maxGauge;
+  C = {draw:shuffle(G.deck), hand:[], discard:[], exhaust:[], maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0,
+       thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, discarded:0, recUsed:false,
+       traps:[], starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
 function startTurn() {
   const m = G.mods;
-  C.turn++; C.played = 0; C.atkCount = 0; C.zeroDrawn = 0;
+  C.turn++; C.played = 0; C.atkCount = 0; C.zeroDrawn = 0; C.discarded = 0; C.recUsed = false;
   const first = C.turn === 1, third = C.turn % 3 === 0;
   if (!C.fortress) C.block = 0;
-  C.energy = MAXE + (first ? m.turn1Energy : 0) + (third ? m.energyEvery3 : 0) + C.skipBonus;
-  C.skipBonus = 0;
+  // เกจพลังงาน: เริ่มเต็ม แล้วฟื้นทุกต้นเทิร์น ไม่เกินเพดาน
+  if (!first) gainE(REGEN, false);
+  if (third && m.energyEvery3) gainE(m.energyEvery3);
+  if (third && m.sunFull) { C.energy = C.maxE; fx('player', '☀️ เกจเต็ม', '#ffd76a'); }
   if (m.drain) { G.hp = Math.max(1, G.hp - m.drain); fx('player', `😈 -${m.drain}`, '#ff6b6b'); }
   if (first) {
     if (m.startBlock) block(m.startBlock);
@@ -715,9 +744,45 @@ function startTurn() {
   let n = HAND + (first ? m.turn1Draw : 0) + (third ? m.drawEvery3 : 0);
   if (m.hermit && G.deck.length <= m.hermit) n++;
   draw(Math.max(1, n));
+  fireTraps('next');
+  C.traps = [];                              // กับดักที่ไม่ทำงานหมดอายุ
   if (C.plate) block(C.plate);
   render();
   checkWin();
+}
+function gainE(n, show = true) {
+  const before = C.energy;
+  C.energy = Math.min(C.maxE, C.energy + n);
+  if (show && C.energy > before) fx('player', `+${C.energy - before} ⚡`, '#ffd76a');
+}
+// ทำงานกับดักตามจังหวะ · f() คืน false = เงื่อนไขไม่เข้า ยังไม่ใช้
+function fireTraps(on) {
+  C.traps = C.traps.filter(t => {
+    if (t.on !== on) return true;
+    if (CARD[t.id].dis.f() === false) return true;
+    fx('player', `⏳ ${CARD[t.id].name}`, '#cfe3ff');
+    if (G.mods.trapBlock) block(G.mods.trapBlock);
+    return false;
+  });
+}
+function discardCard(i) {
+  if (C.busy) return;
+  const m = G.mods, card = C.hand[i], c = CARD[card.id];
+  if (c.dis && c.dis.k === 'trap' && C.traps.length >= TRAP_LIMIT + m.trapSlots) {
+    C.sel = null; render(); toast(`วางกับดักได้สูงสุด ${TRAP_LIMIT + m.trapSlots} อัน`); return;
+  }
+  C.hand.splice(i, 1); C.sel = null;
+  C.discard.push(card);
+  if (c.dis && c.dis.k === 'rec') {
+    gainE(c.dis.n + (!C.recUsed ? m.recycleBonus : 0));
+    C.recUsed = true;
+  } else if (c.dis && c.dis.k === 'trap') {
+    C.traps.push({id:c.id, on:c.dis.on});
+    fx('player', `⏳ วางกับดัก`, '#cfe3ff');
+  }
+  if (C.discarded === 0 && m.discardBonus) gainE(m.discardBonus);
+  C.discarded++;
+  render();
 }
 function checkWin() {
   if (E.hp <= 0 && !C.busy) { C.busy = true; setTimeout(winCombat, 700); }
@@ -731,7 +796,6 @@ function playCard(i) {
   C.sel = null;
   c.play();
   if (c.cost === 0 && C.zeroDrawn < m.zeroDraw) { C.zeroDrawn++; draw(1); }
-  if (c.exhaust && m.exhaustBlock) block(m.exhaustBlock);
   C.played++;
   if (c.type === 'atk') C.atkCount++;
   if (c.type === 'power') {}               // การ์ดพลังออกจากเกมหลังใช้
@@ -743,8 +807,7 @@ function playCard(i) {
 function endTurn() {
   if (C.busy) return;
   C.busy = true;
-  if (C.played === 0 && G.mods.skipEnergy) { C.skipBonus = G.mods.skipEnergy; fx('player', `🙃 เทิร์นหน้า +${C.skipBonus} ⚡`, '#ffd76a'); }
-  C.discard.push(...C.hand); C.hand = []; C.sel = null;
+  C.discard.push(...C.hand); C.hand = []; C.sel = null; C.played = 0;
   render();
   setTimeout(enemyTurn, 450);
 }
@@ -756,6 +819,7 @@ function enemyTurn() {
   if (it.block) { E.block += it.block; fx('enemy', `+${it.block} 🛡`, '#8fd0ff'); }
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
   if (it.atk) {
+    fireTraps('hit');
     for (let h = 0; h < (it.hits || 1); h++) {
       let d = enemyDmg(it.atk);
       if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
@@ -766,12 +830,14 @@ function enemyTurn() {
       if (d > 0) C.shakeP = true;
       if (C.thorns) hurtEnemy(C.thorns);
       if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
+      if (G.hp <= 0) fireTraps('death');
       if (G.hp <= 0 && m.revive && !G.revived) {
         G.revived = true; G.hp = Math.round(G.maxHp * m.revive); fx('player', '📯 ฟื้นคืนชีพ!', '#ffe27a');
       }
       if (G.hp <= 0 || E.hp <= 0) break;
     }
   }
+  if (G.hp > 0) fireTraps('end');
   E.turn++;
   if (E.vuln > 0) E.vuln--;
   if (E.weak > 0) E.weak--;
@@ -926,8 +992,9 @@ const SCREENS = {
       • ก่อนออกเดินทาง เลือก <b>Major Arcana</b> 1 จาก 3 ใบ แล้วเลือก <b>Minor Arcana</b> อีก 2 ใบ (สุ่มจากไพ่ที่คุณมี)<br>
       • สุ่มไพ่เพิ่มที่ <b>วิหารดวงดาว</b> · ไพ่ซ้ำปลุกพลังภาพไพ่ และครบ 3 ใบปลดล็อก <b>ร่างที่สอง</b> (บางใบ)<br>
       • ไพ่อาจออก <b>กลับหัว</b>: ผลแรงขึ้นแต่มีข้อเสีย · Minor ธาตุเดียวกับ Major ได้ผล +25%<br>
-      • ทุกเทิร์นได้ ⚡ 3 พลังงาน และจั่วการ์ด 5 ใบ<br>
-      • <b>แตะการ์ด</b> เพื่อขยายดู แล้ว <b>แตะซ้ำ</b> หรือ <b>ลากขึ้น</b> เพื่อใช้<br>
+      • <b>เกจพลังงาน ⚡</b> สูงสุด 5 เริ่มเต็ม ฟื้น +1 ทุกต้นเทิร์น (ใช้ไม่หมดเก็บไว้ได้)<br>
+      • <b>ลากขึ้น</b> = ใช้การ์ด · <b>ลากลง</b> = ทิ้งการ์ด (หรือแตะการ์ดแล้วกดปุ่ม)<br>
+      • ทิ้งการ์ด 🔋 ได้พลังงานคืน · ทิ้งการ์ด ⏳ วางกับดักที่ทำงานเอง (สูงสุด 2 อัน)<br>
       • ดูไอคอนเหนือศัตรูเพื่อรู้ว่ามันจะทำอะไร<br>
       • ผ่าน 8 ชั้นแล้วโค่นมังกรเพลิงให้ได้!
     </div></div>`,
@@ -1003,9 +1070,12 @@ const SCREENS = {
         ${E.weak ? `<span class="st">🥀 อ่อนแรง ${E.weak}</span>` : ''}
       </div>
     </div>
-    <div class="hint">${C.sel !== null ? 'แตะซ้ำ / ลากขึ้น / แตะศัตรู เพื่อใช้การ์ด' : ''}</div>
+    <div class="hint">${C.sel !== null ? (() => { const c = CARD[C.hand[C.sel].id]; return `
+      <button class="mini up" onclick="playCard(C.sel)" ${c.cost > C.energy ? 'disabled style="opacity:.4"' : ''}>▲ ใช้ (⚡${c.cost})</button>
+      <button class="mini" onclick="discardCard(C.sel)">▼ ทิ้ง${c.dis ? ': ' + disText(c) : ''}</button>`; })()
+      : '<span class="tip">ลากการ์ดขึ้น = ใช้ · ลากลง = ทิ้ง</span>'}</div>
     <div class="player-zone">
-      <div class="energy">${C.energy}/${MAXE}</div>
+      <div class="energy">⚡${C.energy}<small style="font-size:11px">/${C.maxE}</small></div>
       <div class="pinfo ${C.shakeP ? 'shake' : ''}" id="playerEl">
         <div class="bar"><i style="width:${G.hp / G.maxHp * 100}%"></i><span>🛡️ อัศวิน ${G.hp}/${G.maxHp}</span></div>
         <div class="statuses">
@@ -1015,6 +1085,7 @@ const SCREENS = {
           ${C.plate ? `<span class="st">🎖️ เกราะเริ่มเทิร์น ${C.plate}</span>` : ''}
           ${C.wrath ? `<span class="st">🌩️ โทสะ ${C.wrath}</span>` : ''}
           ${C.fortress ? `<span class="st">🏰 ป้อมปราการ</span>` : ''}
+          ${C.traps.map(t => `<span class="st trap">⏳ ${CARD[t.id].dis.s}</span>`).join('')}
         </div>
       </div>
     </div>
@@ -1098,6 +1169,7 @@ function bindHand() {
       down = false;
       if (drag) {
         if (e.clientY - sy < -80) return playCard(i);
+        if (e.clientY - sy > 50) return discardCard(i);
         C.sel = null; render();
       } else if (C.sel === i) playCard(i);
       else { C.sel = i; render(); }
