@@ -360,6 +360,7 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .tile .tic{font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
 .tile .bdg{position:absolute;top:-6px;right:-4px;background:#d63c3c;color:#fff;font-size:10px;border-radius:10px;padding:1px 6px;border:1px solid #fff3}
 .menurow{display:flex;gap:8px;width:100%}.menurow .btn{flex:1;font-size:14px;padding:9px 6px}
+.svbox{width:100%;height:84px;background:rgba(0,0,0,.45);color:var(--txt);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px;font-size:11px;font-family:monospace;word-break:break-all;resize:none}
 details.box summary{cursor:pointer}
 </style>
 </head>
@@ -870,6 +871,10 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
+const GAME_VER = '0.6.0';
+const newStats = () => ({first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
+if (!SAVE.stats) SAVE.stats = newStats();
+const ST = () => SAVE.stats || (SAVE.stats = newStats());
 persist();
 
 function grant(id) {
@@ -1128,6 +1133,9 @@ function nextFloor() {                                   // จบด่าน�
   screen = 'doors'; render();
 }
 function finishRun(win) {
+  { const st = ST(), tr = st.byTier[G.tier] = st.byTier[G.tier] || {r:0, w:0};
+    st.runs++; tr.r++; st.last = Date.now();
+    if (win) { st.wins++; tr.w++; } else st.deathStage[G.stage] = (st.deathStage[G.stage] || 0) + 1; }
   const mult = expMult(G.first, G.lv0, G.tier);
   const exp = Math.round(G.expAcc * mult), lvUp = addExp(exp);
   if (win && G.tier > SAVE.tower.cleared) SAVE.tower.cleared = G.tier;     // ผ่านชั้นครั้งแรก → ปลดล็อกชั้นถัดไป
@@ -1164,7 +1172,7 @@ function applyStain(el) {                                      // ใช้ไ�
   if (st.length === 2 && st[0] !== st[1]) {
     const R = REACT[reactKey(st[0], st[1])];
     C.stains = [el]; C.curEl = null;
-    fx('enemy', `${R.ic} ${R.n}!`, '#ffd25a'); R.f();
+    ST().reacts++; fx('enemy', `${R.ic} ${R.n}!`, '#ffd25a'); R.f();
     return;
   }
   if (boostFor(el)) { C.stains = [el]; return; }               // ตราคู่ซ้ำถูกใช้ไปกับไพ่ใบนี้แล้ว
@@ -1173,7 +1181,7 @@ function applyStain(el) {                                      // ใช้ไ�
 function addBreak(n) {
   if (n <= 0 || E.stun > 0 || E.brkLock > 0 || E.hp <= 0) return;
   E.brk = Math.min(E.brkMax, E.brk + n);
-  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; fx('enemy', '💥 Break! มึน', '#ffd25a'); }
+  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; ST().breaks++; fx('enemy', '💥 Break! มึน', '#ffd25a'); }
 }
 function basicAtk() {                                          // โจมตีพื้นฐาน: ฟรี ดาเมจเล็ก ได้พลังงาน +1 (1 ครั้ง/เทิร์น)
   if (C.busy) return;
@@ -1263,6 +1271,7 @@ function useUlt() {
   if (C.ult < C.ultMax) { C.sel = null; render(); return toast(`<b>🌟 ${u.name}</b><br>${u.d(k)}<br><small>ชาร์จ ${C.ult}/${C.ultMax} · ใช้ไพ่ธาตุ ${EL[M.el].ic} ชาร์จ ×2</small>`, 'info'); }
   C.ult = 0; C.sel = null;
   fx('player', `🌟 ${u.name}`, '#ffe27a');
+  ST().ults++;
   C.curEl = M.el; u.f(k); C.curEl = null; addBreak(4);
   render();
   checkWin();
@@ -1313,6 +1322,7 @@ function enemyTurn() {
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
   if (!it.atk) return enemyFinish();
   const go = grade => {
+    if (parryOn() && ST().parry[grade] !== undefined) ST().parry[grade]++;
     C.parryK = grade === 'perfect' ? 0.25 : grade === 'good' ? 0.6 : 1;
     if (grade === 'perfect') { gainE(1); ultAdd(2); fx('player', '✨ ปัดสมบูรณ์!', '#ffe27a'); }
     else if (grade === 'good') fx('player', '👍 หลบ!', '#9fe0ff');
@@ -1369,8 +1379,10 @@ function intentText() {
 // ================= รางวัล: ผงดาว + ทอง =================
 const DUSTV = {fight:6, elite:15, boss:35};                    // ผงดาวต่อด่าน (ชั้น 1) · +15% ต่อชั้น
 function winCombat() {
+  if (!C || !E) return;                                       // กันเรียกซ้ำ
   const m = G.mods, n = G.node;
   G.expAcc += EXPV[n.t] * tierExpMult(G.tier); G.cleared++;
+  ST().combats++; ST().turns += C.turn;
   const gold = Math.round((n.t === 'elite' ? rand(35, 45) : n.t === 'boss' ? 100 : rand(15, 25)) * (1 + m.goldMult)) + m.killGold;
   G.gold += gold;
   const dust = Math.ceil(DUSTV[n.t] * (1 + 0.15 * (G.tier - 1)) * Math.max(0, 1 + m.dustMult) - 1e-9);
@@ -1442,6 +1454,94 @@ function arcRow(A) {
     ${A.d(A.v)}<br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${badOf(A).d}</small><br>
     <small>🌟 ท่าไม้ตาย: <b>${ULTS[A.el].name}</b> — ${ULTS[A.el].d(1)}</small></span></div>`;
 }
+// ================= ตั้งค่า · สถิติ · สำรอง/นำเข้าเซฟ =================
+const pc = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
+const dstr = t => { try { return new Date(t).toLocaleDateString('th-TH', {year:'numeric', month:'short', day:'numeric'}); } catch (e) { return '-'; } };
+function showSettings() {
+  openModal(`<h2>⚙️ ตั้งค่า</h2>
+    <div class="box" style="text-align:center">เวอร์ชัน ${GAME_VER} · ข้อมูลเก็บในเครื่องนี้เท่านั้น</div>
+    <button class="btn sec" style="width:100%" onclick="toggleParry();showSettings()">🎯 ปัดตามจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
+    <button class="btn sec" style="width:100%" onclick="showStats()">📊 สถิติของฉัน</button>
+    <button class="btn sec" style="width:100%" onclick="showBackup()">💾 สำรองเซฟ / นำเข้าเซฟ</button>
+    <button class="link-btn" onclick="resetAll()">🗑 ล้างข้อมูลเกมทั้งหมด</button>
+    <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
+}
+function showStats() {
+  const st = ST(), tiers = Object.keys(st.byTier).map(Number).sort((a, b) => a - b);
+  const ds = Object.entries(st.deathStage).sort((a, b) => b[1] - a[1])[0];
+  const pt = st.parry.perfect + st.parry.good + st.parry.miss;
+  openModal(`<h2>📊 สถิติของฉัน</h2>
+    <div class="box">
+      เริ่มเล่น ${dstr(st.first)} · เล่นล่าสุด ${dstr(st.last)}<br>
+      🧙 เลเวล ${SAVE.hero.level} · 🏰 ผ่านถึงชั้น ${SAVE.tower.cleared}/${TIERS}<br>
+      ⚔️ รอบทั้งหมด <b>${st.runs}</b> · ชนะ <b>${st.wins}</b> (${pc(st.wins, st.runs)})<br>
+      🥊 ชนะการต่อสู้ ${st.combats} ครั้ง · เฉลี่ย ${st.combats ? (st.turns / st.combats).toFixed(1) : '-'} เทิร์นต่อครั้ง<br>
+      💀 ${ds ? `แพ้บ่อยที่สุดที่ด่าน ${ds[0]} (${ds[1]} ครั้ง)` : 'ยังไม่เคยแพ้'}<br>
+      🌟 ใช้ท่าไม้ตาย ${st.ults} ครั้ง · 💥 ทำศัตรูมึน ${st.breaks} ครั้ง · 🧪 ปฏิกิริยาตราธาตุ ${st.reacts} ครั้ง<br>
+      🎯 ปัดสมบูรณ์ ${st.parry.perfect} · หลบ ${st.parry.good} · พลาด ${st.parry.miss}${pt ? ` (สำเร็จ ${pc(st.parry.perfect + st.parry.good, pt)})` : ''}
+    </div>
+    ${tiers.length ? `<div class="sect">รายชั้น</div>${tiers.map(t => `<div class="arow2"><span>ชั้น ${t}</span><span>เล่น ${st.byTier[t].r} · ชนะ ${st.byTier[t].w} (${pc(st.byTier[t].w, st.byTier[t].r)})</span></div>`).join('')}` : ''}
+    <button class="btn sec close" onclick="showSettings()">กลับ</button>`);
+}
+const hash8 = str => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; return h.toString(16).padStart(8, '0'); };
+function exportCode() {
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify({v:GAME_VER, t:Date.now(), save:SAVE}))));
+  return `KD1:${hash8(b64)}:${b64}`;
+}
+function parseCode(code) {
+  const m = /^KD1:([0-9a-f]{8}):([A-Za-z0-9+/=]+)$/.exec((code || '').replace(/\s+/g, ''));
+  if (!m) throw new Error('รูปแบบรหัสไม่ถูกต้อง');
+  if (hash8(m[2]) !== m[1]) throw new Error('รหัสเสียหาย (ตัวอักษรหายหรือผิด)');
+  const d = JSON.parse(decodeURIComponent(escape(atob(m[2]))));
+  const sv = d && d.save;
+  if (!sv || typeof sv.owned !== 'object' || !sv.hero || typeof sv.hero.level !== 'number') throw new Error('ไม่ใช่ไฟล์เซฟของเกมนี้');
+  return d;
+}
+function showBackup() {
+  const code = exportCode();
+  openModal(`<h2>💾 สำรอง / นำเข้าเซฟ</h2>
+    <div class="sect">สำรองเซฟ</div>
+    <div class="muted">คัดลอกรหัสด้านล่างไปเก็บไว้ (เช่นในแชทตัวเอง/โน้ต) หรือดาวน์โหลดเป็นไฟล์ · ใช้ย้ายเครื่องหรือกู้คืนเมื่อล้างข้อมูลเบราว์เซอร์</div>
+    <textarea id="svOut" class="svbox" readonly onclick="this.select()">${code}</textarea>
+    <div class="menurow"><button class="btn" onclick="copySave()">📋 คัดลอก</button><button class="btn sec" onclick="downloadSave()">⬇ ดาวน์โหลด</button></div>
+    <div class="sect">นำเข้าเซฟ</div>
+    <div class="muted">วางรหัสเซฟ หรือเลือกไฟล์ · ⚠ จะแทนที่ข้อมูลในเครื่องนี้ทั้งหมด</div>
+    <textarea id="svIn" class="svbox" placeholder="KD1:..."></textarea>
+    <input type="file" accept=".txt,text/plain" onchange="readSaveFile(this)" style="font-size:12px;width:100%">
+    <button class="btn" style="width:100%" onclick="importSave()">📥 นำเข้า</button>
+    <button class="btn sec close" onclick="showSettings()">กลับ</button>`);
+}
+function copySave() {
+  const ta = $('#svOut'), t = ta.value;
+  const fallback = () => { ta.select(); try { document.execCommand('copy'); toast('คัดลอกแล้ว ✅', 'info'); } catch (e) { toast('คัดลอกไม่สำเร็จ ให้กดค้างที่ข้อความแล้วเลือกคัดลอก'); } };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(() => toast('คัดลอกแล้ว ✅', 'info')).catch(fallback); } catch (e) {}
+  fallback();
+}
+function downloadSave() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([exportCode()], {type:'text/plain'}));
+  a.download = `knights-deck-save-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function readSaveFile(inp) {
+  const f = inp.files && inp.files[0]; if (!f) return;
+  const r = new FileReader(); r.onload = () => { $('#svIn').value = String(r.result || '').trim(); }; r.readAsText(f);
+}
+function importSave() {
+  let d;
+  try { d = parseCode($('#svIn').value); } catch (e) { return toast('❌ ' + e.message); }
+  const sv = d.save;
+  if (!confirm(`นำเข้าเซฟนี้และแทนที่ข้อมูลปัจจุบัน?\n\nเลเวล ${sv.hero.level} · ไพ่ ${Object.keys(sv.owned).length} ใบ · บันทึกเมื่อ ${dstr(d.t)}`)) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(sv)); } catch (e) { return toast('บันทึกไม่สำเร็จ'); }
+  location.reload();
+}
+function resetAll() {
+  if (!confirm('ล้างข้อมูลเกมทั้งหมดในเครื่องนี้? (ไพ่ เลเวล เพชร สถิติ จะหายหมด กู้คืนไม่ได้ถ้าไม่มีรหัสสำรอง)')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  location.reload();
+}
+
 function showGuide() {
   openModal(`<h2>📘 วิธีเล่น Knight's Deck</h2><div class="guide">
     <h3>🎯 เป้าหมาย</h3>
@@ -1665,6 +1765,7 @@ const SCREENS = {
     <div class="menurow">
       <button class="btn sec" onclick="toggleParry()">🎯 ปัดจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
       <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น</button>
+      <button class="btn sec" onclick="showSettings()">⚙️ ตั้งค่า</button>
     </div>
     <details class="box"><summary><b>สรุปวิธีเล่น</b> (แตะเพื่ออ่าน)</summary>
       • <b>Major</b> = อาชีพ · ให้พลังติดตัว + <b>ท่าไม้ตาย 🌟</b> ตามธาตุ (ใช้เมื่อหลอดพลังพิเศษเต็ม)<br>
