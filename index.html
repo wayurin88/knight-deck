@@ -324,6 +324,12 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .kcard{background:linear-gradient(165deg,color-mix(in srgb,var(--ec) 32%,#2a2238),#16121f 62%);border-width:2px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),inset 0 0 14px color-mix(in srgb,var(--ec) 25%,transparent),0 5px 12px rgba(0,0,0,.55)}
 .kcard .kart{width:62%;aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle,color-mix(in srgb,var(--ec) 45%,#000),rgba(0,0,0,.35) 75%);border:1px solid color-mix(in srgb,var(--ec) 60%,transparent)}
 .kcard .kname{text-shadow:0 1px 2px #000}
+.kcard .kart{position:relative;overflow:hidden}
+.kcard .kart .kimg{display:none}
+.kcard .kart.hasart{width:92%;aspect-ratio:auto;height:60px;border-radius:7px;font-size:0}
+.kcard .kart.hasart small{display:none}
+.kcard .kart.hasart .kimg{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 40%;transform:scale(1.45)}
+.kcard.isrev .kart.hasart{transform:rotate(180deg)}
 .kcard .krole{background:rgba(0,0,0,.55);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;top:3px}
 .kcard:not(.used):not(.cant):active{filter:brightness(1.2)}
 .kcard.sel{box-shadow:0 0 22px var(--ec),0 8px 18px rgba(0,0,0,.7)}
@@ -774,7 +780,7 @@ function kitCardHTML(c, i) {
   return `<div class="kcard ${hit ? 'wkhit' : ''} ${c.used ? 'used' : ''} ${cant ? 'cant' : ''} ${C.sel === i ? 'sel' : ''} ${c.rev ? 'isrev' : ''}" style="--ec:${EL[A.el].c}" data-i="${i}">
     <div class="cost">${cost}</div><div class="krole">${ROLE[A.role].ic}</div>
     <div class="kname">${A.sk}</div>
-    <div class="kart">${A.icon}<small>${A.no}</small></div>
+    <div class="kart ${ART.ok.has(c.id) ? 'hasart' : ''}">${A.icon}<small>${A.no}</small>${artImg(c.id, 'kimg')}</div>
     <div class="kdesc">${desc}</div>
     ${hit ? '<div class="kwk">🎯 ชนะธาตุ ×1.5</div>' : res ? '<div class="kwk bad">⬇ แพ้ธาตุ ×0.75</div>' : C.stains.length === 2 && C.stains[0] === C.stains[1] && C.stains[0] === A.el ? '<div class="kwk">✨ ตรา +25%</div>' : ''}
     ${c.rev ? '<div class="krev">🔻 กลับหัว</div>' : ''}
