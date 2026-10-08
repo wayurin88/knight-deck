@@ -325,7 +325,7 @@ CARDS.forEach(c => c.dis = DIS[c.id] || null);
 function discardBonuses(c) {
   if (typeof C === 'undefined' || !C || !G || !G.mods) return {rec:0, first:0};
   const m = G.mods;
-  return {rec: c.dis && c.dis.k === 'rec' && !C.recUsed ? m.recycleBonus : 0, first: C.discarded === 0 ? m.discardBonus : 0};
+  return {rec: c.dis && c.dis.k === 'rec' && !C.recUsed ? m.recycleBonus : 0, first: C.discarded === 0 && C.energy <= 2 && C.turn % 2 === 0 ? m.discardBonus : 0};
 }
 function disText(c) {
   if (!c.dis) return '';
@@ -361,28 +361,28 @@ const BAD = {
   drain:  {d:'เสีย HP เพิ่มอีก 1 ทุกเทิร์น', f:m=>m.drain+=1},
 };
 const MAJORS = [
-  {no:'0',    en:'The Fool',          th:'คนเขลา',        el:'air',   icon:'🤹', v:1,   rv:2,   bad:'nogold', d:v=>`เริ่มรอบด้วยการ์ดตำนานสุ่ม ${v} ใบ · HP สูงสุด −10`, f:(m,v)=>{m.startRares+=v; m.maxHp-=10;}},
-  {no:'I',    en:'The Magician',      th:'นักเวท',        el:'air',   icon:'🎩', v:1,   rv:2,   bad:'hp',     d:v=>`เกจพลังงานสูงสุด +${v}`, f:(m,v)=>m.maxGauge+=v},
-  {no:'II',   en:'The High Priestess',th:'นักบวชหญิง',    el:'water', icon:'📿', v:3,   rv:5,   bad:'estr',   d:v=>`มองเห็นการ์ด ${v} ใบถัดไปในกองจั่ว · เทิร์นแรกจั่ว +1`, f:(m,v)=>{m.seeTop=Math.max(m.seeTop,v); m.turn1Draw+=1;}},
-  {no:'III',  en:'The Empress',       th:'จักรพรรดินี',    el:'earth', icon:'👑', v:6,   rv:10,  bad:'shop',   d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
+  {no:'0',    en:'The Fool',          th:'คนเขลา',        el:'air',   icon:'🤹', v:1,   rv:2,   bad:'nogold', d:v=>`เริ่มรอบด้วยการ์ดตำนานสุ่ม ${v} ใบ · เริ่มรอบได้ทอง +30 · เริ่มการต่อสู้เกราะ 10`, f:(m,v)=>{m.startRares+=v; m.goldStart+=30; m.startBlock+=10;}},
+  {no:'I',    en:'The Magician',      th:'นักเวท',        el:'air',   icon:'🎩', v:1,   rv:2,   bad:'hp',     d:v=>`เกจพลังงานสูงสุด +${v} · เริ่มการต่อสู้เกราะ 5`, f:(m,v)=>{m.maxGauge+=v; m.startBlock+=5;}},
+  {no:'II',   en:'The High Priestess',th:'นักบวชหญิง',    el:'water', icon:'📿', v:3,   rv:5,   bad:'estr',   d:v=>`มองเห็นการ์ด ${v} ใบถัดไปในกองจั่ว · ทิ้งการ์ดใบแรกของเทิร์น จั่ว 1`, f:(m,v)=>{m.seeTop=Math.max(m.seeTop,v); m.discardDraw+=1;}},
+  {no:'III',  en:'The Empress',       th:'จักรพรรดินี',    el:'earth', icon:'👑', v:8,   rv:12,  bad:'shop',   d:v=>`ฟื้น HP ${v} หลังชนะ`, f:(m,v)=>m.healWin+=v},
   {no:'IV',   en:'The Emperor',       th:'จักรพรรดิ',      el:'earth', icon:'🏛️', v:10,  rv:16,  bad:'e1',     d:v=>`เริ่มการต่อสู้ได้เกราะ ${v}`, f:(m,v)=>m.startBlock+=v},
   {no:'V',    en:'The Hierophant',    th:'ผู้นำศาสนา',     el:'water', icon:'⛪', v:3,   rv:5,   bad:'hp',     d:v=>`วางกับดักได้ 3 อัน · กับดักทำงานแล้วได้เกราะ ${v}`, f:(m,v)=>{m.trapSlots=1; m.trapBlock+=v;}},
-  {no:'VI',   en:'The Lovers',        th:'คู่รัก',         el:'water', icon:'💞', v:.5,  rv:.8,  bad:'rew',    d:v=>`การ์ดใบที่ 2 ของทุกเทิร์น ผล ×${1+v}`, f:(m,v)=>m.secondMult+=v},
-  {no:'VII',  en:'The Chariot',       th:'ราชรถ',         el:'fire',  icon:'🏇', v:5,   rv:8,   bad:'blk',    d:v=>`การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${v}`, f:(m,v)=>m.firstAtk+=v},
+  {no:'VI',   en:'The Lovers',        th:'คู่รัก',         el:'water', icon:'💞', v:.4,  rv:.7,  bad:'rew',    d:v=>`การ์ดใบที่ 2 ของทุกเทิร์น ผล ×${1+v}`, f:(m,v)=>m.secondMult+=v},
+  {no:'VII',  en:'The Chariot',       th:'ราชรถ',         el:'fire',  icon:'🏇', v:3,   rv:6,   bad:'blk',    d:v=>`การ์ดโจมตีใบแรกของเทิร์น ดาเมจ +${v}`, f:(m,v)=>m.firstAtk+=v},
   {no:'VIII', en:'Strength',          th:'พลังแห่งใจ',     el:'fire',  icon:'🦁', v:2,   rv:3,   bad:'ehp',    d:v=>`เริ่มการต่อสู้ได้พลัง +${v}`, f:(m,v)=>m.startStr+=v},
-  {no:'IX',   en:'The Hermit',        th:'ฤาษี',          el:'earth', icon:'🏮', v:12,  rv:15,  bad:'rest',   d:v=>`สำรับไม่เกิน ${v} ใบ: จั่ว +1 ทุกเทิร์น`, f:(m,v)=>m.hermit=Math.max(m.hermit,v)},
-  {no:'X',    en:'Wheel of Fortune',  th:'กงล้อแห่งโชคชะตา', el:'earth', icon:'🎡', v:5,   rv:10,  bad:'shop',   d:v=>`รางวัลการ์ด +1 ตัวเลือก · โอกาสตำนาน +${v}%`, f:(m,v)=>{m.rewardChoices+=1; m.rareChance+=v;}},
-  {no:'XI',   en:'Justice',           th:'ความยุติธรรม',   el:'air',   icon:'⚖️', v:.25, rv:.4,  bad:'estr',   d:v=>`ถูกโจมตี สะท้อนดาเมจกลับ ${pct(v)}`, f:(m,v)=>m.reflect+=v},
-  {no:'XII',  en:'The Hanged Man',    th:'คนแขวน',        el:'water', icon:'🙃', v:1,   rv:2,   bad:'d1',     d:v=>`ทิ้งการ์ดใบแรกของเทิร์น ได้ ⚡ +${v} เพิ่ม`, f:(m,v)=>m.discardBonus+=v},
-  {no:'XIII', en:'Death',             th:'ความตาย',       el:'fire',  icon:'💀', v:25,  rv:40,  bad:'hp',     d:v=>`ลบการ์ดที่ร้านค้าฟรี · ลบการ์ดแล้วได้ทอง ${v}`, f:(m,v)=>{m.freeRemove=true; m.removeGold+=v;}},
-  {no:'XIV',  en:'Temperance',        th:'ความพอดี',      el:'water', icon:'⚗️', v:15,  rv:12,  bad:'dmg',    d:v=>`ไม่รับดาเมจเกิน ${v} ต่อการโจมตีหนึ่งครั้ง`, f:(m,v)=>m.dmgCap=m.dmgCap?Math.min(m.dmgCap,v):v},
-  {no:'XV',   en:'The Devil',         th:'ปีศาจ',         el:'fire',  icon:'😈', v:.4,  rv:.6,  bad:'drain',  d:v=>`ดาเมจ +${pct(v)} · เสีย HP 2 ทุกเทิร์น`, f:(m,v)=>{m.dmgPct+=v; m.drain+=2;}},
+  {no:'IX',   en:'The Hermit',        th:'ฤาษี',          el:'earth', icon:'🏮', v:14,  rv:17,  bad:'rest',   d:v=>`สำรับไม่เกิน ${v} ใบ: จั่ว +1 ทุกเทิร์น`, f:(m,v)=>m.hermit=Math.max(m.hermit,v)},
+  {no:'X',    en:'Wheel of Fortune',  th:'กงล้อแห่งโชคชะตา', el:'earth', icon:'🎡', v:5,   rv:10,  bad:'shop',   d:v=>`รางวัลการ์ด +1 ตัวเลือก · โอกาสตำนาน +${v}% · ทองจากการต่อสู้ +30% · เริ่มรอบได้ทอง +40 · ฟื้น HP 3 หลังชนะ · เริ่มการต่อสู้เกราะ 6`, f:(m,v)=>{m.rewardChoices+=1; m.rareChance+=v; m.goldMult+=.3; m.goldStart+=40; m.healWin+=3; m.startBlock+=6;}},
+  {no:'XI',   en:'Justice',           th:'ความยุติธรรม',   el:'air',   icon:'⚖️', v:.2,  rv:.35, bad:'estr',   d:v=>`ถูกโจมตี สะท้อนดาเมจกลับ ${pct(v)}`, f:(m,v)=>m.reflect+=v},
+  {no:'XII',  en:'The Hanged Man',    th:'คนแขวน',        el:'water', icon:'🙃', v:1,   rv:2,   bad:'d1',     d:v=>`ทิ้งการ์ดใบแรกของ <b>เทิร์นคู่</b> ได้ ⚡ +${v} เพิ่ม (เมื่อเกจ ≤ 2)`, f:(m,v)=>m.discardBonus+=v},
+  {no:'XIII', en:'Death',             th:'ความตาย',       el:'fire',  icon:'💀', v:25,  rv:40,  bad:'hp',     d:v=>`ลบการ์ดที่ร้านค้าฟรี · ลบการ์ดแล้วได้ทอง ${v} · ดาเมจ +10%`, f:(m,v)=>{m.freeRemove=true; m.removeGold+=v; m.dmgPct+=.1;}},
+  {no:'XIV',  en:'Temperance',        th:'ความพอดี',      el:'water', icon:'⚗️', v:12,  rv:10,  bad:'dmg',    d:v=>`ไม่รับดาเมจเกิน ${v} ต่อการโจมตีหนึ่งครั้ง · เกราะ +15%`, f:(m,v)=>{m.dmgCap=m.dmgCap?Math.min(m.dmgCap,v):v; m.blockPct+=.15;}},
+  {no:'XV',   en:'The Devil',         th:'ปีศาจ',         el:'fire',  icon:'😈', v:.5,  rv:.7,  bad:'drain',  d:v=>`ดาเมจ +${pct(v)} · เสีย HP 2 ทุกเทิร์น`, f:(m,v)=>{m.dmgPct+=v; m.drain+=2;}},
   {no:'XVI',  en:'The Tower',         th:'หอคอย',         el:'fire',  icon:'🗼', v:12,  rv:20,  bad:'blk',    d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
   {no:'XVII', en:'The Star',          th:'ดวงดาว',        el:'air',   icon:'⭐', v:15,  rv:25,  bad:'ehp',    d:v=>`HP ต่ำกว่า 30% ครั้งแรกของการต่อสู้: ฟื้น ${v}`, f:(m,v)=>m.starHeal+=v},
   {no:'XVIII',en:'The Moon',          th:'ดวงจันทร์',      el:'water', icon:'🌕', v:2,   rv:3,   bad:'d1',     d:v=>`ศัตรูเริ่มการต่อสู้ด้วยอ่อนแรง ${v}`, f:(m,v)=>m.startEnemyWeak+=v},
-  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'fire',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 3 เทิร์น เกจเต็ม และจั่ว +${v}`, f:(m,v)=>{m.sunFull=true; m.drawEvery3+=v;}},
+  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'fire',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 6 เทิร์น เกจเต็ม และจั่ว +${v}`, f:(m,v)=>{m.sunFull=true; m.sunDraw+=v;}},
   {no:'XX',   en:'Judgement',         th:'การพิพากษา',     el:'air',   icon:'📯', v:.3,  rv:.5,  bad:'estr',   d:v=>`ตายครั้งแรกในรอบ: ฟื้นคืนด้วย HP ${pct(v)}`, f:(m,v)=>m.revive=Math.max(m.revive,v)},
-  {no:'XXI',  en:'The World',         th:'โลก',           el:'earth', icon:'🌍', v:.5,  rv:.8,  bad:'ehp',    d:v=>`ผลของไพ่ Minor ทั้ง 2 ใบ ×${1+v}`, f:()=>{}},
+  {no:'XXI',  en:'The World',         th:'โลก',           el:'earth', icon:'🌍', v:.75, rv:1,  bad:'ehp',    d:v=>`ผลของไพ่ Minor ทั้ง 2 ใบ ×${1+v}`, f:()=>{}},
 ].map((M, i) => ({...M, id:'M' + i, major:true}));
 const WORLD = 'M21';
 
@@ -462,7 +462,7 @@ function buildMods(arc) {
     startEnemyWeak:0, energyEvery3:0, drawEvery3:0, revive:0, enemyHpPct:0, enemyStr:0, shopPct:0, blockPct:0,
     restMult:1, startThorns:0, vulnBonus:0, blockFlat:0, zeroDraw:0, goldMult:0,
     allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0,
-    maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false};
+    maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false, sunDraw:0, discardDraw:0};
   if (!arc) return m;
   const M = eff(arc.major);
   M.f(m, arcValue(M, arc.major.rev));
@@ -747,7 +747,8 @@ function startTurn() {
   // เกจพลังงาน: เริ่มเต็ม แล้วฟื้นทุกต้นเทิร์น ไม่เกินเพดาน
   if (!first) gainE(REGEN, false);
   if (third && m.energyEvery3) gainE(m.energyEvery3);
-  if (third && m.sunFull) { C.energy = C.maxE; fx('player', '☀️ เกจเต็ม', '#ffd76a'); }
+  const sunTurn = C.turn % 6 === 0;
+  if (sunTurn && m.sunFull) { C.energy = C.maxE; fx('player', '☀️ เกจเต็ม', '#ffd76a'); }
   if (m.drain) { G.hp = Math.max(1, G.hp - m.drain); fx('player', `😈 -${m.drain}`, '#ff6b6b'); }
   if (first) {
     if (m.startBlock) block(m.startBlock);
@@ -760,7 +761,7 @@ function startTurn() {
   if (m.turnBlock) block(m.turnBlock);
   if (m.turnEnemyDmg) hurtEnemy(m.turnEnemyDmg);
   // ไพ่ที่ไม่ได้ใช้อยู่ในมือต่อ · เติมให้ครบ 5 แล้วจึงจั่วโบนัส (มือสูงสุด 7)
-  let bonus = (first ? m.turn1Draw : 0) + (third ? m.drawEvery3 : 0);
+  let bonus = (first ? m.turn1Draw : 0) + (sunTurn ? m.sunDraw : 0);
   if (m.hermit && G.deck.length <= m.hermit) bonus++;
   draw(Math.max(first ? 1 : 0, Math.max(0, HAND - C.hand.length) + bonus));
   fireTraps('next');
@@ -801,6 +802,7 @@ function discardCard(i) {
     fx('player', `⏳ วางกับดัก`, '#cfe3ff');
   }
   if (b.first) gainE(b.first);
+  if (C.discarded === 0 && m.discardDraw) draw(m.discardDraw);
   C.discarded++;
   render();
 }
