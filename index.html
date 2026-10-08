@@ -421,7 +421,7 @@ for (const [su, S] of Object.entries(SUITS)) {
 const ARC = Object.fromEntries([...MAJORS, ...MINORS].map(a => [a.id, a]));
 // ตัวเลขที่เห็นบนไพ่ (ตัวเลขดาเมจ/เกราะแสดงสีเขียว/แดงตามโบนัสในการต่อสู้) · k = ตัวคูณพลัง (กลับหัว ×1.4 · ธาตุตรง Major ×1.25 · The World)
 let KIT_POWER = 1;                                   // ตัวคูณพลังไพ่ต่อสู้ทั้งหมด (ปรับสมดุล)
-let ENEMY_HP_K = 2.2, ENEMY_DMG_K = 2.0;             // ตัวคูณความแกร่งศัตรูทั้งหมด (สอบเทียบด้วยบอทจำลอง หลังเปลี่ยนเป็นระบบ Minor 4 ช่อง)
+let ENEMY_HP_K = 1.9, ENEMY_DMG_K = 1.7;             // ตัวคูณความแกร่งศัตรูทั้งหมด (สอบเทียบด้วยบอทจำลอง หลังเปลี่ยนเป็นระบบ Minor 4 ช่อง)
 const sc = (n, k) => Math.max(1, Math.round(n * k * KIT_POWER));
 function opText(op, k, rev) {
   const [t, a, b] = op, n = sc(a || 0, k), st = (a || 0) + (rev ? 1 : 0);
