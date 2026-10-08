@@ -121,6 +121,8 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .hint .mini{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);border-radius:9px;padding:5px 9px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
 .hint .mini.up{border-color:#e6b422}
 .hint .tip{opacity:.6}
+.hint .pillc{background:rgba(0,0,0,.45);padding:3px 8px;border-radius:9px}
+.hint .pillc.full{color:#ff9a8a}
 .st.trap{background:#2d3f5c}
 .controls{display:flex;justify-content:space-between;align-items:center;padding:4px 12px 14px}
 .pile{font-size:13px;background:rgba(0,0,0,.45);padding:7px 11px;border-radius:10px}
@@ -163,7 +165,7 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 const RAR = {starter:'พื้นฐาน', common:'ธรรมดา', uncommon:'หายาก', rare:'ตำนาน'};
 const RCOLOR = {starter:'#aaa', common:'#9fc0dd', uncommon:'#b07cf0', rare:'#f2c443'};
 const TYPE = {atk:'โจมตี', skill:'ทักษะ', power:'พลัง'};
-const MAXE = 5, HAND = 5, REV_CHANCE = 0.3, TRAP_LIMIT = 2;
+const MAXE = 5, HAND = 5, HAND_MAX = 7, PLAY_LIMIT = 3, REV_CHANCE = 0.3, TRAP_LIMIT = 2;
 let REGEN = 1;   // พลังงานที่ฟื้นทุกต้นเทิร์น
 
 let screen = 'title', G = null, C = null, E = null, uidN = 0;
@@ -219,7 +221,7 @@ function heal(n) {
 }
 function draw(n) {
   for (let i = 0; i < n; i++) {
-    if (C.hand.length >= 10) break;
+    if (C.hand.length >= HAND_MAX) break;
     if (!C.draw.length) {
       if (!C.discard.length) break;
       C.draw = shuffle(C.discard); C.discard = [];
@@ -741,9 +743,10 @@ function startTurn() {
   }
   if (m.turnBlock) block(m.turnBlock);
   if (m.turnEnemyDmg) hurtEnemy(m.turnEnemyDmg);
-  let n = HAND + (first ? m.turn1Draw : 0) + (third ? m.drawEvery3 : 0);
-  if (m.hermit && G.deck.length <= m.hermit) n++;
-  draw(Math.max(1, n));
+  // ไพ่ที่ไม่ได้ใช้อยู่ในมือต่อ · เติมให้ครบ 5 แล้วจึงจั่วโบนัส (มือสูงสุด 7)
+  let bonus = (first ? m.turn1Draw : 0) + (third ? m.drawEvery3 : 0);
+  if (m.hermit && G.deck.length <= m.hermit) bonus++;
+  draw(Math.max(first ? 1 : 0, Math.max(0, HAND - C.hand.length) + bonus));
   fireTraps('next');
   C.traps = [];                              // กับดักที่ไม่ทำงานหมดอายุ
   if (C.plate) block(C.plate);
@@ -790,6 +793,7 @@ function checkWin() {
 function playCard(i) {
   if (C.busy) return;
   const m = G.mods, card = C.hand[i], c = CARD[card.id];
+  if (C.played >= PLAY_LIMIT) { C.sel = null; render(); toast(`ออกไพ่ได้ ${PLAY_LIMIT} ใบต่อเทิร์น<br><small>ทิ้งการ์ดยังทำได้</small>`); return; }
   if (c.cost > C.energy) { C.sel = null; render(); toast('พลังงานไม่พอ'); return; }
   C.energy -= c.cost;
   C.hand.splice(i, 1);
@@ -807,7 +811,7 @@ function playCard(i) {
 function endTurn() {
   if (C.busy) return;
   C.busy = true;
-  C.discard.push(...C.hand); C.hand = []; C.sel = null; C.played = 0;
+  C.sel = null; C.played = 0;                // ไพ่ที่เหลืออยู่ในมือต่อ
   render();
   setTimeout(enemyTurn, 450);
 }
@@ -995,6 +999,7 @@ const SCREENS = {
       • <b>เกจพลังงาน ⚡</b> สูงสุด 5 เริ่มเต็ม ฟื้น +1 ทุกต้นเทิร์น (ใช้ไม่หมดเก็บไว้ได้)<br>
       • <b>ลากขึ้น</b> = ใช้การ์ด · <b>ลากลง</b> = ทิ้งการ์ด (หรือแตะการ์ดแล้วกดปุ่ม)<br>
       • ทิ้งการ์ด 🔋 ได้พลังงานคืน · ทิ้งการ์ด ⏳ วางกับดักที่ทำงานเอง (สูงสุด 2 อัน)<br>
+      • ออกไพ่ได้ <b>3 ใบต่อเทิร์น</b> (การทิ้งไม่นับ) · ไพ่ที่ไม่ได้ใช้<b>อยู่ในมือต่อ</b> ต้นเทิร์นเติมให้ครบ 5 (มือสูงสุด 7)<br>
       • ดูไอคอนเหนือศัตรูเพื่อรู้ว่ามันจะทำอะไร<br>
       • ผ่าน 8 ชั้นแล้วโค่นมังกรเพลิงให้ได้!
     </div></div>`,
@@ -1071,9 +1076,9 @@ const SCREENS = {
       </div>
     </div>
     <div class="hint">${C.sel !== null ? (() => { const c = CARD[C.hand[C.sel].id]; return `
-      <button class="mini up" onclick="playCard(C.sel)" ${c.cost > C.energy ? 'disabled style="opacity:.4"' : ''}>▲ ใช้ (⚡${c.cost})</button>
+      <button class="mini up" onclick="playCard(C.sel)" ${c.cost > C.energy || C.played >= PLAY_LIMIT ? 'disabled style="opacity:.4"' : ''}>▲ ใช้ (⚡${c.cost})</button>
       <button class="mini" onclick="discardCard(C.sel)">▼ ทิ้ง${c.dis ? ': ' + disText(c) : ''}</button>`; })()
-      : '<span class="tip">ลากการ์ดขึ้น = ใช้ · ลากลง = ทิ้ง</span>'}</div>
+      : `<span class="pillc ${C.played >= PLAY_LIMIT ? 'full' : ''}">🃏 ออกไพ่ ${C.played}/${PLAY_LIMIT}</span><span class="pillc">✋ มือ ${C.hand.length}/${HAND_MAX}</span><span class="tip">ขึ้น=ใช้ · ลง=ทิ้ง</span>`}</div>
     <div class="player-zone">
       <div class="energy">⚡${C.energy}<small style="font-size:11px">/${C.maxE}</small></div>
       <div class="pinfo ${C.shakeP ? 'shake' : ''}" id="playerEl">
@@ -1090,7 +1095,7 @@ const SCREENS = {
       </div>
     </div>
     <div class="hand" id="hand">${C.hand.map((c, i) =>
-      cardHTML(c.id, `${CARD[c.id].cost > C.energy ? 'cant' : ''} ${C.sel === i ? 'sel' : ''}`, `data-i="${i}"`)).join('')}</div>
+      cardHTML(c.id, `${CARD[c.id].cost > C.energy || C.played >= PLAY_LIMIT ? 'cant' : ''} ${C.sel === i ? 'sel' : ''}`, `data-i="${i}"`)).join('')}</div>
     <div class="controls">
       <button class="pile" onclick="showPile('draw')">📚 จั่ว ${C.draw.length}${G.mods.seeTop ? ' 📿' : ''}</button>
       <button class="btn" onclick="endTurn()" ${C.busy ? 'disabled' : ''}>จบเทิร์น</button>
