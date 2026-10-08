@@ -217,6 +217,12 @@ button.arow{color:var(--txt);text-align:left}
 .kcard .kwk{position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);background:#e8c24a;color:#201400;font-size:9px;font-weight:700;border-radius:8px;padding:1px 6px;white-space:nowrap}
 .basicbtn{background:rgba(0,0,0,.5);border:2px solid #9fc0dd;border-radius:12px;padding:5px 8px;font-size:18px;line-height:1.1;text-align:center;color:var(--txt)}
 .basicbtn small{display:block;font-size:9px;opacity:.85}.basicbtn:disabled{opacity:.35}
+.parry{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;touch-action:none;user-select:none}
+.pr-box{position:relative;width:200px;height:200px}
+.pr-target{position:absolute;inset:67px;border:5px solid #ffe27a;border-radius:50%;box-shadow:0 0 14px #ffe27a}
+.pr-ring{position:absolute;inset:0;border:5px solid #fff;border-radius:50%;animation:prshrink var(--T) linear forwards}
+@keyframes prshrink{from{transform:scale(1);opacity:.45}to{transform:scale(.33);opacity:1}}
+.pr-txt{text-align:center;line-height:1.6;font-size:16px;text-shadow:0 2px 4px #000}
 .ultbtn{--ec:#ffd25a;flex:1;position:relative;overflow:hidden;background:rgba(0,0,0,.5);border:2px solid var(--ec);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;line-height:1.25;text-align:center;color:var(--txt)}
 .ultbtn small{display:block;font-weight:400;font-size:11px;opacity:.85}
 .ultbtn i{position:absolute;left:0;bottom:0;height:4px;background:var(--ec)}
@@ -1087,13 +1093,13 @@ function startCombat(eid) {
   E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:BEATS[el], brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge, ultMax = Math.max(5, ULT_MAX - m.ultCut);
   C = {kit:G.arc.minors.map(e => ({...e, used:false})), maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0, strT:0,
-       thorns:0, reflectT:0, curEl:null, boost:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
+       thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
        ult:Math.min(ultMax, m.startCharge), ultMax, starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
 function startTurn() {
   const m = G.mods;
-  C.turn++; C.played = 0; C.atkCount = 0; C.strT = 0; C.basicUsed = false; C.reflectT = m.turnReflect;
+  C.turn++; C.played = 0; C.atkCount = 0; C.strT = 0; C.basicUsed = false; C.guard = false; C.reflectT = m.turnReflect;
   C.kit.forEach(c => c.used = false);
   const first = C.turn === 1;
   C.block = 0;
@@ -1167,8 +1173,28 @@ function endTurn() {
   setTimeout(enemyTurn, 450);
 }
 const enemyDmg = base => Math.floor((base + E.str) * (E.weak > 0 ? .75 : 1) * matchK());
+// ปัด/หลบตามจังหวะ: วงแหวนหดเข้ากรอบ แตะตอนตรงกรอบ · ปิดได้ที่หน้าแรก (ปุ่ม 🛡 ตั้งรับใช้ได้เสมอ)
+const PARRY = {T:1200, perfect:150, good:340};
+const parryOn = () => SAVE.parry !== false;
+function toggleParry() { SAVE.parry = !parryOn(); persist(); render(); }
+function startParry(it, done) {
+  const ov = document.createElement('div');
+  ov.className = 'parry'; ov.style.setProperty('--T', PARRY.T + 'ms');
+  ov.innerHTML = `<div class="pr-box"><div class="pr-target"></div><div class="pr-ring"></div></div>
+    <div class="pr-txt">${E.name} โจมตี ${intentParts(it, E.str, E.weak)}<br><b>แตะเมื่อวงแหวนตรงกรอบ!</b></div>`;
+  app.appendChild(ov);
+  const t0 = Date.now(); let fin = false;
+  const end = grade => { if (fin) return; fin = true; ov.remove(); done(grade); };
+  ov.onpointerdown = () => { const e = Math.abs(Date.now() - t0 - PARRY.T); end(e <= PARRY.perfect ? 'perfect' : e <= PARRY.good ? 'good' : 'miss'); };
+  setTimeout(() => end('miss'), PARRY.T + PARRY.good + 80);
+}
+function guard() {                                         // ตั้งรับ: ไม่ต้องจับจังหวะ ลดดาเมจเทิร์นนี้ครึ่งหนึ่ง แลกพลังงาน 1
+  if (C.busy) return;
+  if (C.guard) { C.sel = null; render(); return toast('ตั้งรับอยู่แล้ว'); }
+  if (C.energy < 1) { C.sel = null; render(); return toast('พลังงานไม่พอ'); }
+  C.energy--; C.guard = true; C.sel = null; fx('player', '🛡 ตั้งรับ', '#8fd0ff'); render();
+}
 function enemyTurn() {
-  const m = G.mods;
   if (E.stun > 0) {                                           // มึน: ข้ามเทิร์น (ท่าที่เตรียมไว้ยังไม่ถูกใช้)
     E.stun = 0; E.brkLock = 0; E.block = 0; fx('enemy', '😵 มึน ข้ามเทิร์น', '#ffd25a');
     if (E.vuln > 0) E.vuln--;
@@ -1180,25 +1206,37 @@ function enemyTurn() {
   const it = E.pattern[E.turn % E.pattern.length];
   if (it.block) { E.block += it.block; fx('enemy', `+${it.block} 🛡`, '#8fd0ff'); }
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
-  if (it.atk) {
-    if (m.pinHit && (E.turn + 1) % m.pinEvery === 0) hurtEnemy(m.pinHit);
-    for (let h = 0; h < (it.hits || 1); h++) {
-      let d = enemyDmg(it.atk);
-      if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
-      const b = Math.min(C.block, d); C.block -= b; d -= b;
-      if (m.dmgCap) d = Math.min(d, m.dmgCap);
-      G.hp = Math.max(0, G.hp - d);
-      fx('player', d > 0 ? `-${d}` : 'ป้องกัน', d > 0 ? '#ff6b6b' : '#9fc0dd');
-      if (d > 0) C.shakeP = true;
-      if (C.thorns) hurtEnemy(C.thorns);
-      if (C.reflectT) hurtEnemy(C.reflectT);
-      if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
-      if (G.hp <= 0 && m.revive && !G.revived) {
-        G.revived = true; G.hp = Math.round(G.maxHp * m.revive); fx('player', '📯 ฟื้นคืนชีพ!', '#ffe27a');
-      }
-      if (G.hp <= 0 || E.hp <= 0) break;
+  if (!it.atk) return enemyFinish();
+  const go = grade => {
+    C.parryK = grade === 'perfect' ? 0.25 : grade === 'good' ? 0.6 : 1;
+    if (grade === 'perfect') { gainE(1); ultAdd(2); fx('player', '✨ ปัดสมบูรณ์!', '#ffe27a'); }
+    else if (grade === 'good') fx('player', '👍 หลบ!', '#9fe0ff');
+    else if (grade === 'miss' && parryOn()) fx('player', 'พลาด', '#aaa');
+    enemyHits(it); enemyFinish();
+  };
+  if (parryOn()) { render(); startParry(it, go); } else go('none');
+}
+function enemyHits(it) {
+  const m = G.mods;
+  if (m.pinHit && (E.turn + 1) % m.pinEvery === 0) hurtEnemy(m.pinHit);
+  for (let h = 0; h < (it.hits || 1); h++) {
+    let d = Math.floor(enemyDmg(it.atk) * (C.guard ? 0.5 : 1) * (C.parryK || 1));
+    if (m.reflect) hurtEnemy(Math.floor(d * m.reflect));
+    const b = Math.min(C.block, d); C.block -= b; d -= b;
+    if (m.dmgCap) d = Math.min(d, m.dmgCap);
+    G.hp = Math.max(0, G.hp - d);
+    fx('player', d > 0 ? `-${d}` : 'ป้องกัน', d > 0 ? '#ff6b6b' : '#9fc0dd');
+    if (d > 0) C.shakeP = true;
+    if (C.thorns) hurtEnemy(C.thorns);
+    if (C.reflectT) hurtEnemy(C.reflectT);
+    if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
+    if (G.hp <= 0 && m.revive && !G.revived) {
+      G.revived = true; G.hp = Math.round(G.maxHp * m.revive); fx('player', '📯 ฟื้นคืนชีพ!', '#ffe27a');
     }
+    if (G.hp <= 0 || E.hp <= 0) break;
   }
+}
+function enemyFinish() {
   E.turn++;
   if (E.vuln > 0) E.vuln--;
   if (E.weak > 0) E.weak--;
@@ -1352,6 +1390,11 @@ function showGuide() {
     <h3>💢 Break และโจมตีพื้นฐาน</h3>
     <ul><li>ไพ่ ⚔️ โจมตี และ 🌀 พิเศษ เติมหลอด <b>💢 Break</b> (+2 · ชนะธาตุศัตรู +3) เต็มแล้วศัตรู <b>😵 มึน</b> ข้ามเทิร์นถัดไป และรับดาเมจ ×1.3 ทันที</li>
     <li><b>👊 โจมตีพื้นฐาน</b> ฟรี ดาเมจเล็ก ได้พลังงาน +1 ใช้ได้ 1 ครั้งต่อเทิร์น</li></ul>
+
+    <h3>🎯 ปัดตามจังหวะและตั้งรับ</h3>
+    <ul><li>ก่อนศัตรูโจมตี จะมี <b>วงแหวนหดเข้ากรอบ</b> แตะหน้าจอตอนวงแหวนตรงกรอบ</li>
+    <li>✨ <b>ปัดสมบูรณ์</b> ดาเมจ −75% + พลังงาน +1 + ชาร์จพลังพิเศษ +2 · 👍 <b>หลบ</b> ดาเมจ −40% · พลาด = ดาเมจเต็ม</li>
+    <li>ไม่ถนัดจับจังหวะ ปิดได้ที่หน้าแรก (🎯 ปัดตามจังหวะ) หรือใช้ปุ่ม <b>🛡 ตั้งรับ</b> (เสีย 1⚡ ลดดาเมจเทิร์นนั้น 50% ไม่ต้องจับจังหวะ ใช้ได้ทั้งตอนเปิด/ปิดโหมดปัด)</li></ul>
 
     <h3>🌟 พลังพิเศษและท่าไม้ตาย</h3>
     <ul><li>ทุกครั้งที่ใช้ไพ่ หลอดพลังพิเศษชาร์จ +1 · ถ้าเป็นไพ่ <b>ธาตุเดียวกับ Major</b> ชาร์จ +2 · หลอดเต็มที่ 10</li>
@@ -1510,6 +1553,7 @@ const SCREENS = {
     <button class="btn sec" onclick="screen='forge';render()">🔨 ร้านช่างตี (ซื้อ/สุ่ม/รวมเครื่องราง)</button>
     <button class="btn sec" onclick="screen='book';render()">📚 สมุดไพ่ (${Object.keys(SAVE.owned).length}/78)</button>
     <button class="btn sec" onclick="showKitGallery()">📖 ไพ่ต่อสู้ Minor ทั้ง 56 ใบ</button>
+    <button class="btn sec" onclick="toggleParry()">🎯 ปัดตามจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
     <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น (ฉบับเต็ม)</button>
     <div class="box">
       <b>สรุปวิธีเล่น</b><br>
@@ -1707,6 +1751,7 @@ const SCREENS = {
           ${C.strT ? `<span class="st">💪 +${C.strT} เทิร์นนี้</span>` : ''}
           ${C.thorns ? `<span class="st">⛓️ หนาม ${C.thorns}</span>` : ''}
           ${C.reflectT ? `<span class="st">⛓️ สะท้อน ${C.reflectT} เทิร์นนี้</span>` : ''}
+          ${C.guard ? `<span class="st blk">🛡 ตั้งรับ (ดาเมจ −50%)</span>` : ''}
         </div>
       </div>
     </div>
@@ -1715,6 +1760,7 @@ const SCREENS = {
       <button class="ultbtn ${ready ? 'ready' : ''}" style="--ec:${EL[M.el].c}" onclick="useUlt()">🌟 ${u.name}<small>${ready ? 'พร้อมใช้! แตะเพื่อปล่อย' : `ชาร์จ ${C.ult}/${C.ultMax}`}</small>
         <i style="width:${C.ult / C.ultMax * 100}%"></i></button>
       <button class="basicbtn" onclick="basicAtk()" ${C.basicUsed ? 'disabled' : ''}>👊<small>ฟรี<br>+1⚡</small></button>
+      <button class="basicbtn" onclick="guard()" ${C.guard || C.energy < 1 ? 'disabled' : ''}>🛡<small>ตั้งรับ<br>−1⚡</small></button>
       <button class="btn" onclick="endTurn()" ${C.busy ? 'disabled' : ''}>จบเทิร์น</button>
     </div>`;
   },
