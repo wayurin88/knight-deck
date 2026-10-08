@@ -84,6 +84,22 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .ctile.l5,.ctile.l7{border-color:#ffd25a;box-shadow:0 0 8px rgba(255,210,90,.5);background:radial-gradient(circle at 50% 30%,#3b2a6e,#120c24 75%)}
 .ctile.l7 .ci{animation:floaty 2.4s ease-in-out infinite}
 .pullres{display:flex;flex-direction:column;align-items:center;gap:4px}
+.door{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:14px;background:linear-gradient(#3a2f52,#241d34);border:2px solid #6a5a8a;text-align:left;min-height:84px;color:var(--txt)}
+.door:active{transform:scale(.98)}
+.door.elite{border-color:#c0504a}.door.boss{border-color:#e6b422;box-shadow:0 0 16px rgba(230,180,34,.4)}.door.shop{border-color:#4caf7a}.door.rest{border-color:#ff9a4a}
+.dart{font-size:42px;width:54px;text-align:center;flex-shrink:0}
+.dinfo{flex:1;font-size:15px;line-height:1.4}.dinfo small{display:block;font-size:12px;opacity:.75;line-height:1.35}
+.dgo{font-size:20px;opacity:.6}
+.steps{display:flex;gap:8px;justify-content:center}
+.step{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:14px}
+.step.done{background:#3d7a4a}.step.cur{background:var(--gold);color:#1a1206;font-weight:700}
+.trow{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.05);border:2px solid transparent;text-align:left;color:var(--txt)}
+.trow.sel{border-color:var(--gold);background:rgba(230,180,34,.14)}.trow.lock{opacity:.4}
+.trow .tn{font-weight:700;width:44px;flex-shrink:0}.trow .tinfo{flex:1;font-size:14px}.trow .tinfo small{display:block;font-size:11px;opacity:.7}
+.trow .texp{font-size:13px;text-align:right}.trow .texp small{display:block;font-size:10px;opacity:.7}
+.expbar{height:14px;background:#1a1624;border-radius:7px;overflow:hidden;position:relative;margin:6px 0}
+.expbar>i{display:block;height:100%;background:linear-gradient(#7ad0ff,#2f7ad0)}
+.expbar>span{position:absolute;inset:0;font-size:10px;text-align:center;line-height:14px;font-weight:700}
 .amu{display:flex;align-items:center;gap:8px;width:100%;padding:8px;border-radius:12px;background:rgba(255,255,255,.05)}
 .amu .ai2{font-size:28px;width:38px;text-align:center;flex-shrink:0}
 .amu .ainfo{flex:1;min-width:0;font-size:12px;line-height:1.3}
@@ -470,7 +486,7 @@ function minorMult(major, e) {
   if (ARC[e.id].el === ARC[major.id].el) k *= 1.25;
   return k;
 }
-function buildMods(arc, equip = []) {
+function buildMods(arc, equip = [], stats = null) {
   const m = {maxHp:0, goldStart:0, startRares:0, turn1Draw:0, seeTop:0, healWin:0, startBlock:0,
     secondMult:0, firstAtk:0, startStr:0, hermit:0, rewardChoices:0, rareChance:0, reflect:0,
     freeRemove:false, removeGold:0, dmgCap:0, dmgPct:0, drain:0, startEnemyDmg:0, starHeal:0,
@@ -478,7 +494,7 @@ function buildMods(arc, equip = []) {
     restMult:1, startThorns:0, vulnBonus:0, blockFlat:0, zeroDraw:0, goldMult:0,
     allAtk:0, turnBlock:0, startEnemyVuln:0, turnEnemyDmg:0,
     maxGauge:0, startGauge:0, trapSlots:0, trapBlock:0, discardBonus:0, recycleBonus:0, sunFull:false, sunDraw:0, discardDraw:0,
-    turnEndHeal:0, pinHit:0, pinEvery:1, lowHpBlock:0, ringEvery:0, gloveTimes:0, gloveBlock:0, gloveDraw:0};
+    turnEndHeal:0, handBonus:0, pinHit:0, pinEvery:1, lowHpBlock:0, ringEvery:0, gloveTimes:0, gloveBlock:0, gloveDraw:0};
   if (arc) {
     const M = eff(arc.major);
     M.f(m, arcValue(M, arc.major.rev));
@@ -490,6 +506,7 @@ function buildMods(arc, equip = []) {
     });
   }
   equip.filter(Boolean).forEach(e => AMU[e.id].f(m, AMU[e.id].t[e.tier - 1]));
+  if (stats) heroMods(m, stats);
   return m;
 }
 
@@ -530,21 +547,59 @@ const ENEMIES = {
   skeleton: {name:'โครงกระดูกนักรบ', art:'💀', hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
   orc:      {name:'ออร์คคลั่ง', art:'👹', hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
   darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
-  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', hp:[120,120], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
+  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
 };
 
-// ================= แผนที่ =================
+// ================= หอคอย · เลเวล · ประตู =================
 const NODE = {fight:{ic:'⚔️',name:'ต่อสู้'}, elite:{ic:'☠️',name:'ศัตรูพิเศษ'}, shop:{ic:'🛒',name:'ร้านค้า'}, rest:{ic:'🔥',name:'กองไฟ'}, boss:{ic:'🐉',name:'บอส'}};
-const MAP = [
-  {t:'fight', pool:['slime','goblin']},
-  {t:'fight', pool:['goblin','skeleton']},
-  {t:'shop'},
-  {t:'fight', pool:['skeleton','orc']},
-  {t:'elite', pool:['darkknight']},
-  {t:'rest'},
-  {t:'shop'},
-  {t:'boss', pool:['dragon']},
+const TIERS = 10, STAGES = 4;                          // 10 ชั้น · ชั้นละ 4 ด่าน (ด่านที่ 4 = บอส)
+const LV_MAX = 30, PTS_PER_LV = 2, STAT_CAP = 15;      // เลเวลสูงสุด 30 · 2 แต้มต่อเลเวล · สถานะละไม่เกิน 15
+const EXPV = {fight:10, elite:25, boss:50};            // EXP ต่อด่าน (ชั้น 1)
+const TIER_HP = 0.085, TIER_DMG = 0.045;               // ศัตรูแรงขึ้นต่อชั้น (สอบเทียบด้วยการจำลอง)
+const REPLAY_EXP = 0.5, OVER_LV_PENALTY = 0.1;         // เล่นซ้ำ EXP 50% · ลด 10% ต่อเลเวลที่เกินที่แนะนำ
+const RESET_COST = 100;                                // รีเซ็ตแต้มสถานะ (เหรียญ)
+const recLevel = t => 1 + Math.round(2.5 * (t - 1));   // เลเวลที่แนะนำ (อัตราชนะบอท ~50% ที่เลเวลนี้)
+const expNeed = L => 40 + 20 * (L - 1);
+const tierExpMult = t => 1 + 0.25 * (t - 1);
+const STATS = [
+  {k:'vit',  icon:'❤', name:'ความอึด',   d:p=>`HP สูงสุด +${4 * p}`,                      per:'+4 HP ต่อแต้ม'},
+  {k:'str',  icon:'💪', name:'กำลัง',     d:p=>`พลัง +${Math.floor(p / 4)}`,               per:'ทุก 4 แต้ม พลัง +1 (ทุกการต่อสู้)'},
+  {k:'def',  icon:'🛡', name:'ความแกร่ง', d:p=>`เริ่มรบเกราะ ${p} · ทุกเทิร์นเกราะ +${Math.floor(p / 4)}`, per:'+1 เกราะเริ่มต้นต่อแต้ม · ทุก 4 แต้ม เกราะ +1 ทุกเทิร์น'},
+  {k:'int',  icon:'🧠', name:'ปัญญา',     d:p=>`เติมมือเป็น ${5 + Math.floor(p / 10)} ใบ · เทิร์นแรกจั่ว +${Math.floor(p / 7)}`, per:'ทุก 10 แต้ม เติมมือ +1 ใบ · ทุก 7 แต้ม เทิร์นแรกจั่ว +1'},
+  {k:'luck', icon:'🍀', name:'โชค',       d:p=>`ตำนาน +${(0.5 * p).toFixed(1)}% · ทอง +${2 * p}% · ฟื้น HP ${Math.floor(p / 2)} หลังชนะ`, per:'+0.5% โอกาสตำนาน · +2% ทอง · ทุก 2 แต้ม ฟื้น HP +1 หลังชนะ'},
 ];
+function newHero() { return {level:1, exp:0, points:0, stats:{vit:0, str:0, def:0, int:0, luck:0}}; }
+function heroMods(m, st) {
+  m.maxHp += 4 * st.vit; m.startStr += Math.floor(st.str / 4);
+  m.startBlock += st.def; m.turnBlock += Math.floor(st.def / 4);
+  m.handBonus += Math.floor(st.int / 10); m.turn1Draw += Math.floor(st.int / 7);
+  m.rareChance += 0.5 * st.luck; m.goldMult += 0.02 * st.luck; m.healWin += Math.floor(st.luck / 2);
+}
+// ตัวคูณ EXP ของรอบนี้: ผ่านครั้งแรก 100% · เล่นซ้ำ 50% · ลดอีกตามเลเวลที่เกินที่แนะนำ
+const lvPenalty = (lv, t) => Math.max(0.1, 1 - OVER_LV_PENALTY * Math.max(0, lv - recLevel(t)));
+const expMult = (first, lv, t) => (first ? 1 : REPLAY_EXP) * lvPenalty(lv, t);
+function addExp(n) {
+  const h = SAVE.hero; let ups = 0;
+  h.exp += n;
+  while (h.level < LV_MAX && h.exp >= expNeed(h.level)) { h.exp -= expNeed(h.level); h.level++; h.points += PTS_PER_LV; ups++; }
+  if (h.level >= LV_MAX) h.exp = 0;
+  return ups;
+}
+// ศัตรูต่อด่าน
+const DOOR_POOL = {1:['slime', 'goblin', 'skeleton'], 2:['goblin', 'skeleton', 'orc'], 3:['goblin', 'skeleton', 'orc']};
+const DOOR_W = [{k:'fight', w:4}, {k:'elite', w:2}, {k:'shop', w:2}, {k:'rest', w:2}];
+function genDoors(stage) {
+  if (stage >= STAGES) return [{t:'boss', eid:'dragon'}];
+  const pool = DOOR_POOL[stage];
+  if (stage === 1) return shuffle(pool).slice(0, 3).map(eid => ({t:'fight', eid}));   // ด่านแรกต่อสู้ทั้งหมด ได้การ์ดแน่นอน
+  for (;;) {
+    const types = [0, 1, 2].map(() => weighted(DOOR_W).k);
+    const n = k => types.filter(x => x === k).length;
+    if (n('shop') > 1 || n('rest') > 1 || n('elite') > 1 || n('fight') + n('elite') < 1) continue;   // กันโชคร้าย
+    const ens = shuffle(pool); let ei = 0;
+    return types.map(t => t === 'fight' ? {t, eid:ens[ei++ % ens.length]} : t === 'elite' ? {t, eid:'darkknight'} : {t});
+  }
+}
 
 // ================= ยูทิลิตี้ =================
 const $ = s => document.querySelector(s);
@@ -642,11 +697,13 @@ function starterSave() {
   // Minor ตัวเลข Ace–5 ชุดละ 3 ใบ + ราชสำนัก 2 ใบต่างชุด
   Object.keys(SUITS).forEach(s => shuffle(MINORS.filter(n => n.suit === s && !n.court && n.rank <= 5)).slice(0, 3).forEach(n => owned[n.id] = 1));
   shuffle(Object.keys(SUITS)).slice(0, 2).forEach(s => owned[pick(MINORS.filter(n => n.suit === s && n.court)).id] = 1);
-  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}, amu:newAmu()};
+  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}, amu:newAmu(), hero:newHero(), tower:{cleared:0, sel:1}};
 }
 let SAVE = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } })() || starterSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
 if (!SAVE.amu) SAVE.amu = newAmu();
+if (!SAVE.hero) SAVE.hero = newHero();
+if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
 persist();
 
 function grant(id) {
@@ -698,7 +755,10 @@ function craft(id) {
   SAVE.dust -= cost; grant(id); persist(); render(); showArcDetail(id);
 }
 function toggleForm(id) { SAVE.form[id] = SAVE.form[id] === 2 ? 1 : 2; persist(); render(); showArcDetail(id); }
-function resetSave() { SAVE = starterSave(); persist(); render(); toast('รีเซ็ตคอลเลกชันแล้ว (สุ่มชุดเริ่มต้นใหม่)', 'info'); }
+function resetSave() {                                  // รีเซ็ตเฉพาะคอลเลกชันไพ่ (เก็บตัวละคร หอคอย และเครื่องรางไว้)
+  const keep = {hero:SAVE.hero, tower:SAVE.tower, amu:SAVE.amu};
+  SAVE = starterSave(); Object.assign(SAVE, keep); persist(); render(); toast('รีเซ็ตคอลเลกชันไพ่แล้ว (สุ่มชุดเริ่มต้นใหม่)', 'info');
+}
 const invN = (id, t) => (SAVE.amu.inv[id] && SAVE.amu.inv[id][t]) || 0;
 const isEquip = (id, t) => SAVE.amu.equip.some(e => e && e.id === id && e.tier === t);
 const availAmu = (id, t) => invN(id, t) - (isEquip(id, t) ? 1 : 0);
@@ -829,38 +889,49 @@ function toggleRunForm(k) {
 // ================= เริ่มเกม / แผนที่ =================
 function newRun(arc = null) {
   const equip = SAVE.amu.equip.filter(Boolean).map(e => ({...e}));
-  const m = buildMods(arc, equip);
-  G = {arc, amu:equip, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), floor:0, pity:0, deck:[], revived:false};
-  G.hp = G.maxHp;
+  const m = buildMods(arc, equip, SAVE.hero.stats);
+  const tier = Math.max(1, Math.min(TIERS, SAVE.tower.cleared + 1, SAVE.tower.sel || 1));
+  G = {arc, amu:equip, mods:m, maxHp:Math.max(20, 80 + m.maxHp), gold:Math.max(0, 99 + m.goldStart), pity:0, deck:[], revived:false,
+       tier, stage:1, cleared:0, expAcc:0, first:tier > SAVE.tower.cleared, lv0:SAVE.hero.level, node:null};
+  G.hp = G.maxHp; G.doors = genDoors(1);
   for (let i = 0; i < 5; i++) G.deck.push(inst('strike'));
   for (let i = 0; i < 4; i++) G.deck.push(inst('defend'));
   G.deck.push(inst('bash'));
   for (let i = 0; i < m.startRares; i++) G.deck.push(inst(pick(POOL.rare)));
-  screen = 'map'; render();
+  screen = 'doors'; render();
 }
-function enterNode() {
-  const n = MAP[G.floor];
-  if (n.pool) startCombat(pick(n.pool));
-  else if (n.t === 'shop') openShop();
+function chooseDoor(i) {
+  const d = G.doors[i]; if (!d) return;
+  G.node = d;
+  if (d.eid) startCombat(d.eid);
+  else if (d.t === 'shop') openShop();
   else { screen = 'rest'; render(); }
 }
-function nextFloor() {
-  G.floor++;
-  if (G.floor >= MAP.length) return finishRun(true);
-  screen = 'map'; render();
+function nextFloor() {                                   // จบด่านนี้ → ไปด่านถัดไป
+  G.stage++; G.doors = genDoors(G.stage);
+  screen = 'doors'; render();
 }
 function finishRun(win) {
+  const mult = expMult(G.first, G.lv0, G.tier);
+  const exp = Math.round(G.expAcc * mult), lvUp = addExp(exp);
+  if (win && G.tier > SAVE.tower.cleared) SAVE.tower.cleared = G.tier;     // ผ่านชั้นครั้งแรก → ปลดล็อกชั้นถัดไป
   // รางวัลจบรอบ (แพ้ก็ได้) เพื่อให้ผู้เล่นฟรีสุ่มได้
-  G.earn = {gems:30, tickets:(G.floor >= 4 ? 1 : 0) + (win ? 2 : 0), coins:win ? 60 : Math.min(40, 10 + 5 * G.floor)};
+  G.earn = {gems:30, tickets:(G.cleared >= 2 ? 1 : 0) + (win ? 2 : 0), coins:win ? 60 : Math.min(40, 10 + 10 * G.cleared), exp, mult, lvUp};
   SAVE.gems += G.earn.gems; SAVE.tickets += G.earn.tickets; SAVE.amu.coins += G.earn.coins; persist();
   C = E = null; screen = win ? 'victory' : 'over'; render();
 }
-const earnHTML = () => `<div class="box" style="text-align:center">รางวัลจบรอบ: 💎 +${G.earn.gems}${G.earn.tickets ? ` · 🎫 +${G.earn.tickets}` : ''} · 🪙 +${G.earn.coins}</div>`;
+const earnHTML = () => `<div class="box" style="text-align:center">รางวัลจบรอบ: 💎 +${G.earn.gems}${G.earn.tickets ? ` · 🎫 +${G.earn.tickets}` : ''} · 🪙 +${G.earn.coins}<br>
+  ⭐ EXP +${G.earn.exp}${G.earn.mult < 1 ? ` <small>(×${G.earn.mult.toFixed(2)} ${G.first ? '' : 'เล่นซ้ำ'})</small>` : ''}
+  ${G.earn.lvUp ? `<br><b style="color:#ffd25a">🎉 เลเวลอัป! Lv ${SAVE.hero.level} · ได้แต้มสถานะ +${G.earn.lvUp * PTS_PER_LV}</b>` : ''}</div>
+  <button class="btn sec" onclick="screen='hero';render()">🧙 ตัวละคร (Lv ${SAVE.hero.level} · ${SAVE.hero.points} แต้ม)</button>`;
 
 // ================= ระบบต่อสู้ =================
 function startCombat(eid) {
-  const m = G.mods, d = ENEMIES[eid], hp = Math.round(rand(d.hp[0], d.hp[1]) * (1 + m.enemyHpPct));
-  E = {...d, hp, maxHp:hp, block:0, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  const m = G.mods, d = ENEMIES[eid], t = G.tier || 1;
+  const hpK = 1 + TIER_HP * (t - 1), dK = 1 + TIER_DMG * (t - 1);
+  const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
+  const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
+  E = {...d, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:0, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge;
   C = {draw:shuffle(G.deck), hand:[], discard:[], exhaust:[], maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0,
        thorns:0, plate:0, wrath:0, fortress:false, turn:0, played:0, atkCount:0, zeroDrawn:0, discarded:0, recUsed:false, gloveUsed:0,
@@ -893,7 +964,7 @@ function startTurn() {
   // ไพ่ที่ไม่ได้ใช้อยู่ในมือต่อ · เติมให้ครบ 5 แล้วจึงจั่วโบนัส (มือสูงสุด 7)
   let bonus = (first ? m.turn1Draw : 0) + (sunTurn ? m.sunDraw : 0);
   if (m.hermit && G.deck.length <= m.hermit) bonus++;
-  draw(Math.max(first ? 1 : 0, Math.max(0, HAND - C.hand.length) + bonus));
+  draw(Math.max(first ? 1 : 0, Math.max(0, HAND + m.handBonus - C.hand.length) + bonus));
   fireTraps('next');
   C.traps = [];                              // กับดักที่ไม่ทำงานหมดอายุ
   if (C.plate) block(C.plate);
@@ -1019,14 +1090,15 @@ function intentText() {
 
 // ================= รางวัล (สุ่มเลือก 1 + ระบบ pity) =================
 function winCombat() {
-  const m = G.mods, n = MAP[G.floor];
+  const m = G.mods, n = G.node;
+  G.expAcc += EXPV[n.t] * tierExpMult(G.tier); G.cleared++;
   const gold = Math.round((n.t === 'elite' ? rand(35, 45) : n.t === 'boss' ? 100 : rand(15, 25)) * (1 + m.goldMult));
   G.gold += gold;
   if (m.healWin) G.hp = Math.min(G.maxHp, G.hp + m.healWin);
   C = E = null;
   if (n.t === 'boss') return finishRun(true);
   const chance = Math.min(100, (n.t === 'elite' ? 20 : 8) + m.rareChance + G.pity * 4);
-  const count = Math.max(1, Math.min(5, 3 + m.rewardChoices));
+  const count = Math.max(1, Math.min(5, 3 + m.rewardChoices + (n.t === 'elite' ? 1 : 0)));
   const choices = pickCards(count, () => rollRarity(chance));
   G.pity = choices.some(id => CARD[id].rar === 'rare') ? 0 : G.pity + 1;
   G.reward = {gold, choices, chance};
@@ -1127,8 +1199,21 @@ function arcRow(A) {
 function showGuide() {
   openModal(`<h2>📘 วิธีเล่น Knight's Deck</h2><div class="guide">
     <h3>🎯 เป้าหมาย</h3>
-    ผ่านเส้นทาง 8 ชั้น (ต่อสู้ · ร้านค้า · ศัตรูพิเศษ · กองไฟ) แล้วโค่น <b>มังกรเพลิง</b> ที่ชั้นสุดท้าย
-    HP ไม่ฟื้นเองระหว่างชั้น ต้องรักษาไว้ให้ดี
+    ไต่ <b>หอคอย 10 ชั้น</b> ให้ถึงยอด · แต่ละชั้นคือ 1 รอบ <b>4 ด่าน</b> จบที่บอสประจำชั้น
+    ชนะบอสเพื่อปลดล็อกชั้นถัดไป ศัตรูแรงขึ้นทุกชั้น · HP ไม่ฟื้นเองระหว่างด่าน ต้องรักษาไว้ให้ดี
+
+    <h3>🚪 ประตู</h3>
+    <ul><li>ด่าน 1: เลือกประตูต่อสู้ 1 จาก 3 บาน (ศัตรูต่างกัน)</li>
+    <li>ด่าน 2–3: เลือก 1 จาก 3 บาน (⚔️ ต่อสู้ · ☠️ ศัตรูพิเศษ · 🛒 ร้านค้า · 🔥 กองไฟ) แต่ละชุดมีประตูต่อสู้อย่างน้อย 1 บาน</li>
+    <li>ด่าน 4: บอสประจำชั้น (ไม่ต้องเลือก)</li>
+    <li>ศัตรูพิเศษยากกว่า แต่ได้การ์ดเลือกจาก 4 ใบ โอกาสหายากสูงกว่า และ EXP มากกว่า</li>
+    <li>เลือกให้สมดุลระหว่าง "เสริมสำรับ" กับ "รักษา HP" เช่น เจอกองไฟก่อนบอสเป็นประตูที่ดี</li></ul>
+
+    <h3>🧙 เลเวลและสถานะ</h3>
+    <ul><li>ผ่านด่านได้ <b>EXP</b> (ต่อสู้ 10 · ศัตรูพิเศษ 25 · บอส 50 · ชั้นสูงได้เพิ่ม) แพ้ก็ยังได้ EXP จากด่านที่ผ่านมาแล้ว</li>
+    <li>ขึ้นเลเวลได้ <b>2 แต้ม</b> นำไปอัป ❤ ความอึด · 💪 กำลัง · 🛡 ความแกร่ง · 🧠 ปัญญา · 🍀 โชค (ตัวละไม่เกิน 15 แต้ม) เลเวลสูงสุด 30</li>
+    <li>แต่ละชั้นมี <b>เลเวลที่แนะนำ</b> ถ้าไม่ไหว กลับไปเล่นชั้นที่ผ่านแล้วเพื่อฟาร์มได้ แต่ได้ EXP <b>50%</b> และลดลงอีกถ้าเลเวลสูงกว่าที่แนะนำ</li>
+    <li>รีเซ็ตแต้มได้ในราคา 🪙 เหรียญ</li></ul>
 
     <h3>🔮 ก่อนออกเดินทาง: ดูดวง</h3>
     <ul><li>เลือก <b>Major Arcana</b> 1 จาก 3 ใบ เป็นพลังหลักตลอดรอบ</li>
@@ -1170,7 +1255,7 @@ function showGuide() {
     <li>⛓️ <b>หนาม</b> ถูกตีแล้วสะท้อนดาเมจกลับ</li>
     <li><b>สลาย</b> การ์ดที่ใช้แล้วหายไปจนจบการต่อสู้</li></ul>
 
-    <h3>🗺️ ระหว่างทาง</h3>
+    <h3>🛒 ระหว่างทาง</h3>
     <ul><li><b>ชนะ</b> ได้ทอง และเลือกการ์ดใหม่ 1 ใบ (หรือข้ามเพื่อให้สำรับบาง)</li>
     <li><b>ร้านค้า</b> ซื้อการ์ด · ซองสุ่ม · ลบการ์ดที่ไม่ต้องการ</li>
     <li><b>กองไฟ</b> ฟื้น HP 30% หรือ ลบการ์ด 1 ใบ</li></ul>
@@ -1205,10 +1290,42 @@ function showMyArcana() {
     <button class="btn sec" onclick="closeModal()">ปิด</button><div style="flex:1"></div>`);
 }
 
+// ================= ประตู · หอคอย · ตัวละคร =================
+function doorHTML(d, i) {
+  const t = d.t, N = NODE[t];
+  let body;
+  if (d.eid) {
+    const e = ENEMIES[d.eid], hp = Math.round((e.hp[0] + e.hp[1]) / 2 * (1 + TIER_HP * (G.tier - 1)));
+    const exp = Math.round(EXPV[t] * tierExpMult(G.tier) * expMult(G.first, G.lv0, G.tier));
+    const extra = t === 'elite' ? '<br>การ์ดเลือกจาก 4 ใบ · โอกาสหายากสูง' : t === 'boss' ? '<br>ชนะเพื่อปลดล็อกชั้นถัดไป' : '<br>ได้การ์ดใหม่ + ทอง';
+    body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${e.name}</b><small>HP ~${hp} · ⭐ +${exp} EXP${extra}</small></span>`;
+  } else if (t === 'shop') body = `<span class="dart">🛒</span><span class="dinfo"><b>ร้านค้า</b><small>ซื้อการ์ด · ซองสุ่ม · ลบการ์ด</small></span>`;
+  else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(.3 * G.mods.restMult)} หรือลบการ์ด 1 ใบ</small></span>`;
+  return `<button class="door ${t}" onclick="chooseDoor(${i})">${body}<span class="dgo">▶</span></button>`;
+}
+function selectTier(t) {
+  if (t > SAVE.tower.cleared + 1) return toast(`🔒 ต้องชนะบอสชั้น ${t - 1} ก่อน`);
+  SAVE.tower.sel = t; persist(); render();
+}
+function startTier() { SAVE.tower.sel = Math.min(SAVE.tower.sel, SAVE.tower.cleared + 1, TIERS); persist(); beginArcana(); }
+function spendPt(k) {
+  const h = SAVE.hero;
+  if (h.points <= 0 || h.stats[k] >= STAT_CAP) return;
+  h.stats[k]++; h.points--; persist(); render();
+}
+function resetStats() {
+  const h = SAVE.hero, used = Object.values(h.stats).reduce((a, b) => a + b, 0);
+  if (!used) return toast('ยังไม่ได้ใช้แต้ม');
+  if (SAVE.amu.coins < RESET_COST) return toast('เหรียญไม่พอ');
+  SAVE.amu.coins -= RESET_COST; h.points += used; h.stats = {vit:0, str:0, def:0, int:0, luck:0}; persist(); render();
+}
+function devExp(n) { const ups = addExp(n); persist(); render(); toast(`+${n} EXP${ups ? ` · เลเวลอัป ×${ups}` : ''}`, 'info'); }
+function devUnlockTiers() { SAVE.tower.cleared = TIERS; persist(); render(); }
+
 // ================= หน้าจอ =================
 const topbar = () => `<div class="topbar">
   <span class="pill">❤ ${G.hp}/${G.maxHp}</span><span class="pill">💰 ${G.gold}</span>
-  <span class="pill">ชั้น ${Math.min(G.floor + 1, MAP.length)}/${MAP.length}</span>
+  <span class="pill">🏰 ${G.tier} · ${G.stage}/${STAGES}</span>
   <button class="pill" onclick="showDeck()">🂠 ${G.deck.length}</button>
   <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button></div>
   ${G.arc ? `<button class="arcbar" onclick="event.stopPropagation();showMyArcana()">🔮
@@ -1222,7 +1339,9 @@ const SCREENS = {
     <h1>Knight's Deck</h1>
     <div class="muted">ต้นแบบเกมการ์ดสร้างสำรับ · ธีมแฟนตาซี<br>คลาส: อัศวิน</div>
     ${walletHTML()}
-    <button class="btn" onclick="beginArcana()">🔮 ดูดวงแล้วออกผจญภัย</button>
+    <div class="muted">🧙 Lv ${SAVE.hero.level}${SAVE.hero.points ? ` · <b style="color:#ffd25a">${SAVE.hero.points} แต้มสถานะ</b>` : ''} · 🏰 ผ่านถึงชั้น ${SAVE.tower.cleared}/${TIERS}</div>
+    <button class="btn" onclick="screen='tower';render()">🏰 เข้าหอคอย</button>
+    <button class="btn sec" onclick="screen='hero';render()">🧙 ตัวละคร (อัปสถานะ)</button>
     <button class="btn sec" onclick="screen='shrine';render()">🌟 วิหารดวงดาว (สุ่มไพ่)</button>
     <button class="btn sec" onclick="amuBack='title';screen='amulets';render()">💍 เครื่องราง (ใส่ ${SAVE.amu.equip.filter(Boolean).length}/2)</button>
     <button class="btn sec" onclick="screen='forge';render()">🔨 ร้านช่างตี (ซื้อ/สุ่ม/รวมเครื่องราง)</button>
@@ -1239,7 +1358,7 @@ const SCREENS = {
       • ทิ้งการ์ด 🔋 ได้พลังงานคืน · ทิ้งการ์ด ⏳ วางกับดักที่ทำงานเอง (สูงสุด 2 อัน)<br>
       • ออกไพ่ได้ <b>3 ใบต่อเทิร์น</b> (การทิ้งไม่นับ) · ไพ่ที่ไม่ได้ใช้<b>อยู่ในมือต่อ</b> ต้นเทิร์นเติมให้ครบ 5 (มือสูงสุด 7)<br>
       • กล่องเหนือศัตรูบอกท่า <b>ตอนนี้</b> และ <b>ถัดไป</b> ใช้วางแผนล่วงหน้า 2 เทิร์น<br>
-      • ผ่าน 8 ชั้นแล้วโค่นมังกรเพลิงให้ได้!
+      • ไต่ <b>หอคอย 10 ชั้น</b> · แต่ละชั้น 4 ด่าน เลือกประตูได้ · ด่านที่ 4 คือบอส · ขึ้นเลเวลเพื่ออัปสถานะ
     </div></div>`,
 
   arcana: () => {
@@ -1330,11 +1449,43 @@ const SCREENS = {
     <div class="startbar"><button class="btn sec" onclick="screen='title';render()">กลับ</button></div>
   </div>`,
 
-  map: () => `${topbar()}<div class="screen">
-    <h2>เส้นทางผจญภัย</h2>
-    <div class="map">${MAP.map((n, k) => `<div class="node ${k < G.floor ? 'done' : k === G.floor ? 'cur' : ''}">
-      <span class="ic">${NODE[n.t].ic}</span><span>${k + 1}. ${NODE[n.t].name}</span>${k < G.floor ? '<span class="ok">✓</span>' : ''}</div>`).join('<div class="link"></div>')}</div>
-    <button class="btn" onclick="enterNode()">ไปต่อ: ${NODE[MAP[G.floor].t].ic} ${NODE[MAP[G.floor].t].name}</button></div>`,
+  doors: () => `${topbar()}<div class="screen">
+    <h2>🏰 ชั้น ${G.tier} · ด่าน ${G.stage}/${STAGES}</h2>
+    <div class="steps">${[1, 2, 3, 4].map(k => `<span class="step ${k < G.stage ? 'done' : k === G.stage ? 'cur' : ''}">${k === STAGES ? '🐉' : k}</span>`).join('')}</div>
+    <div class="muted">${G.stage === STAGES ? 'บอสประจำชั้นรออยู่ · เตรียมตัวให้พร้อม' : 'เลือกประตู 1 บาน'}</div>
+    ${G.doors.map(doorHTML).join('')}
+  </div>`,
+
+  tower: () => {
+    const T = SAVE.tower, lv = SAVE.hero.level, sel = Math.min(T.sel || 1, T.cleared + 1, TIERS);
+    return `<div class="screen"><h2>🏰 หอคอย</h2>${walletHTML()}
+    <div class="muted">🧙 Lv ${lv} · ผ่านถึงชั้น ${T.cleared}/${TIERS}<br>ชนะบอสเพื่อปลดล็อกชั้นถัดไป · เล่นชั้นที่ผ่านแล้วซ้ำได้ แต่ได้ EXP ${pct(REPLAY_EXP)}<br>(ลดอีก ${pct(OVER_LV_PENALTY)} ต่อเลเวลที่เกินเลเวลแนะนำ)</div>
+    ${Array.from({length:TIERS}, (_, i) => i + 1).map(t => {
+      const locked = t > T.cleared + 1, done = t <= T.cleared, m = expMult(!done, lv, t);
+      return `<button class="trow ${t === sel ? 'sel' : ''} ${locked ? 'lock' : ''}" onclick="selectTier(${t})">
+        <span class="tn">${locked ? '🔒' : done ? '✓' : '▶'} ${t}</span>
+        <span class="tinfo"><b>ชั้น ${t}</b><small>แนะนำ Lv ${recLevel(t)} · ศัตรู HP ×${(1 + TIER_HP * (t - 1)).toFixed(1)} · ดาเมจ ×${(1 + TIER_DMG * (t - 1)).toFixed(2)}</small></span>
+        <span class="texp">${!locked && lv < recLevel(t) - 3 ? '⚠ ' : ''}⭐×${(tierExpMult(t) * m).toFixed(2)}<small>${done ? 'เล่นซ้ำ' : 'ครั้งแรก'}</small></span></button>`; }).join('')}
+    <div class="muted">${lv < recLevel(sel) - 3 ? '⚠ เลเวลของคุณต่ำกว่าที่แนะนำมาก · ลองฟาร์มชั้นล่างก่อนก็ได้' : ''}</div>
+    <div class="startbar" style="gap:8px"><button class="btn sec" onclick="screen='title';render()">กลับ</button>
+      <button class="btn" onclick="startTier()">🔮 ดูดวงแล้วเข้าชั้น ${sel}</button></div>
+    <button class="link-btn" onclick="devUnlockTiers()">🧪 ทดสอบ: ปลดล็อกทุกชั้น</button>
+  </div>`; },
+
+  hero: () => {
+    const h = SAVE.hero, need = h.level >= LV_MAX ? 0 : expNeed(h.level);
+    return `<div class="screen"><h2>🧙 ตัวละคร</h2>${walletHTML()}
+    <div class="box" style="text-align:center"><b style="font-size:22px">Lv ${h.level}${h.level >= LV_MAX ? ' (สูงสุด)' : ''}</b>
+      ${need ? `<div class="expbar"><i style="width:${h.exp / need * 100}%"></i><span>${h.exp}/${need} EXP</span></div>` : ''}
+      แต้มสถานะคงเหลือ: <b style="color:#ffd25a;font-size:18px">${h.points}</b></div>
+    ${STATS.map(st => { const pt = h.stats[st.k]; return `<div class="amu"><span class="ai2">${st.icon}</span>
+      <div class="ainfo"><b>${st.name} <span style="color:#ffd25a">${pt}/${STAT_CAP}</span></b><small>${st.d(pt)}<br><span style="opacity:.7">${st.per}</span></small></div>
+      <button class="btn" style="padding:7px 16px" onclick="spendPt('${st.k}')" ${h.points > 0 && pt < STAT_CAP ? '' : 'disabled'}>＋</button></div>`; }).join('')}
+    <button class="btn sec" onclick="resetStats()">♻️ รีเซ็ตแต้ม (🪙 ${RESET_COST})</button>
+    <div class="muted">ขึ้นเลเวลละ ${PTS_PER_LV} แต้ม · สถานะละไม่เกิน ${STAT_CAP} แต้ม · เลเวลสูงสุด ${LV_MAX}</div>
+    <button class="link-btn" onclick="devExp(500)">🧪 ทดสอบ: +500 EXP</button>
+    <div class="startbar"><button class="btn" onclick="screen='title';render()">กลับ</button></div>
+  </div>`; },
 
   combat: () => `${topbar()}
     <div class="enemy-zone" onclick="if(C.sel!==null)playCard(C.sel)">
@@ -1405,17 +1556,18 @@ const SCREENS = {
 
   over: () => `<div class="screen" style="justify-content:center">
     <div style="font-size:72px">💀</div><h1>พ่ายแพ้</h1>
-    <div class="muted">ไปได้ถึงชั้น ${G.floor + 1} จาก ${MAP.length} · สำรับ ${G.deck.length} ใบ</div>
+    <div class="muted">ชั้น ${G.tier} · ไปได้ถึงด่าน ${G.stage}/${STAGES} · สำรับ ${G.deck.length} ใบ</div>
     ${earnHTML()}
-    <button class="btn" onclick="beginArcana()">🔮 ดูดวงใหม่แล้วเริ่มอีกครั้ง</button>
+    <button class="btn" onclick="screen='tower';render()">🏰 กลับหอคอย</button>
     <button class="btn sec" onclick="screen='title';render()">หน้าแรก</button></div>`,
 
   victory: () => `<div class="screen" style="justify-content:center">
-    <div style="font-size:72px">🏆</div><h1>โค่นมังกรได้แล้ว!</h1>
-    <div class="muted">HP เหลือ ${G.hp}/${G.maxHp} · สำรับสุดท้าย ${G.deck.length} ใบ</div>
+    <div style="font-size:72px">🏆</div><h1>ผ่านชั้น ${G.tier} แล้ว!</h1>
+    <div class="muted">HP เหลือ ${G.hp}/${G.maxHp} · สำรับสุดท้าย ${G.deck.length} ใบ${G.tier >= TIERS ? '<br>🎉 ไต่ถึงยอดหอคอยแล้ว!' : ''}</div>
     ${earnHTML()}
     <button class="btn sec" onclick="showDeck()">ดูสำรับที่ชนะ</button>
-    <button class="btn" onclick="beginArcana()">🔮 เล่นอีกครั้ง</button></div>`,
+    ${G.tier < TIERS ? `<button class="btn" onclick="SAVE.tower.sel=${G.tier + 1};persist();beginArcana()">🏰 ขึ้นชั้น ${G.tier + 1}</button>` : ''}
+    <button class="btn sec" onclick="screen='tower';render()">🏰 กลับหอคอย</button></div>`,
 };
 
 function render() {
