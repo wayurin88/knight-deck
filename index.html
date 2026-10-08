@@ -124,6 +124,12 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 .arow .ai{font-size:24px;width:32px;text-align:center;flex-shrink:0}
 .arow small{opacity:.8}
 .arow .bad{color:#ff8a7a}
+.arow.cur{background:rgba(255,210,90,.15);border-left-color:#ffd25a}
+button.arow{color:var(--txt);text-align:left}
+.mjrow{display:flex;gap:12px;align-items:flex-start;width:100%}
+.mjctl{flex:1;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.pchips{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.pchips span{background:rgba(255,255,255,.08);padding:3px 8px;border-radius:10px}
 .sect{width:100%;font-weight:700;color:var(--gold);margin-top:8px}
 .chosen{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:13px;background:rgba(0,0,0,.3);padding:6px 12px;border-radius:12px}
 
@@ -201,7 +207,7 @@ h2{font-size:21px;text-align:center;color:var(--gold)}
 const RAR = {starter:'พื้นฐาน', common:'ธรรมดา', uncommon:'หายาก', rare:'ตำนาน'};
 const RCOLOR = {starter:'#aaa', common:'#9fc0dd', uncommon:'#b07cf0', rare:'#f2c443'};
 const TYPE = {atk:'โจมตี', skill:'ทักษะ', power:'พลัง'};
-const MAXE = 5, HAND = 5, HAND_MAX = 7, PLAY_LIMIT = 3, REV_CHANCE = 0.3, TRAP_LIMIT = 2;
+const MAXE = 5, HAND = 5, HAND_MAX = 7, PLAY_LIMIT = 3, REV_AT = 4, TRAP_LIMIT = 2;      // REV_AT = จำนวนไพ่ซ้ำที่ปลดล็อกการกลับหัว
 let REGEN = 1;   // พลังงานที่ฟื้นทุกต้นเทิร์น
 
 let screen = 'title', G = null, C = null, E = null, uidN = 0;
@@ -699,7 +705,7 @@ function starterSave() {
   // Minor ตัวเลข Ace–5 ชุดละ 3 ใบ + ราชสำนัก 2 ใบต่างชุด
   Object.keys(SUITS).forEach(s => shuffle(MINORS.filter(n => n.suit === s && !n.court && n.rank <= 5)).slice(0, 3).forEach(n => owned[n.id] = 1));
   shuffle(Object.keys(SUITS)).slice(0, 2).forEach(s => owned[pick(MINORS.filter(n => n.suit === s && n.court)).id] = 1);
-  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}, amu:newAmu(), hero:newHero(), tower:{cleared:0, sel:1}};
+  return {owned, form:{}, gems:0, tickets:3, dust:0, pity:0, firstBuy:{}, amu:newAmu(), hero:newHero(), tower:{cleared:0, sel:1}, equipMajor:{id:Object.keys(owned).find(i => ARC[i].major), rev:false}};
 }
 let SAVE = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } })() || starterSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) {} }
@@ -743,7 +749,7 @@ function pullTag(r) {
   if (r.dust) return `<span style="color:#c9b6ff">✨ +${r.dust} ผง</span>`;
   if (!r.before) return `<span style="color:#7ef08a">🆕 ใหม่!</span>`;
   const lv = LEVELS.find(l => l.at === c);
-  return `×${c}${lv ? `<br><span style="color:#ffd25a">⬆ ${lv.name}</span>` : ''}${c === ALT_AT && A.alt ? '<br><span style="color:#9fd8ff">🔓 ร่างที่สอง</span>' : ''}`;
+  return `×${c}${lv ? `<br><span style="color:#ffd25a">⬆ ${lv.name}</span>` : ''}${c === ALT_AT && A.alt ? '<br><span style="color:#9fd8ff">🔓 ร่างที่สอง</span>' : ''}${c === REV_AT ? '<br><span style="color:#ff8a7a">🔓 กลับหัวได้</span>' : ''}`;
 }
 function buyGems(i) {
   const p = GEM_PACKS[i], bonus = !SAVE.firstBuy[i];
@@ -848,7 +854,8 @@ function showArcDetail(id) {
   const A = ARC[id], n = SAVE.owned[id] || 0, form = canAlt(id) && SAVE.form[id] === 2 ? 2 : 1, nl = nextLevel(n);
   openModal(`<div style="flex:1"></div>
     ${tarotHTML({id, rev:false, form}, null, n ? '' : 'none')}
-    <div class="muted">${n ? `มี ${n}/${MAX_COPIES} ใบ · ${levelOf(n).name}${nl ? `<br>อีก ${nl.at - n} ใบ → ${nl.name}` : ''}` : 'ยังไม่มีไพ่ใบนี้'}</div>
+    <div class="muted">${n ? `มี ${n}/${MAX_COPIES} ใบ · ${levelOf(n).name}${nl ? `<br>อีก ${nl.at - n} ใบ → ${nl.name}` : ''}` : 'ยังไม่มีไพ่ใบนี้'}<br>
+      🔻 ไพ่กลับหัว: ${canRev(id) ? '<b style="color:#7ef08a">ปลดล็อกแล้ว</b>' : `ปลดล็อกเมื่อมีครบ ${REV_AT} ใบ (ตอนนี้ ${n})`}</div>
     ${arcRow(A)}
     ${A.alt ? `<div class="arow" style="--ec:#9fd8ff"><span class="ai">🔁</span><span><b>ร่างที่สอง</b> ${canAlt(id) ? '' : `<small>🔒 สะสมครบ ${ALT_AT} ใบเพื่อปลดล็อก</small>`}<br>
       ${A.alt.d(A.alt.v)}<br><small class="bad">🔻 กลับหัว: ${A.alt.d(A.alt.rv)} · ⚠ ${BAD[A.bad].d}</small></span></div>` : ''}
@@ -857,15 +864,26 @@ function showArcDetail(id) {
     <button class="btn sec" onclick="closeModal()">ปิด</button><div style="flex:1"></div>`);
 }
 
-// ================= ดูดวงก่อนเริ่มรอบ: Major 3 เลือก 1 → Minor 3 เลือก 1 สองครั้ง =================
+// ================= ก่อนเริ่มรอบ: Major ที่สวมใส่ + Minor สุ่ม 3 เลือก 1 สองครั้ง =================
 let AR = null;
-const flip = () => Math.random() < REV_CHANCE;
+const copies = id => SAVE.owned[id] || 0;
+const canRev = id => copies(id) >= REV_AT;          // ไพ่ที่ชำนาญ (ครบ 4 ใบ) เลือกกลับหัวได้
 const canAlt = id => !!ARC[id].alt && (SAVE.owned[id] || 0) >= ALT_AT;
-const offer = id => ({id, rev:flip(), form: canAlt(id) && SAVE.form[id] === 2 ? 2 : 1});
+const offer = id => ({id, rev:false, form: canAlt(id) && SAVE.form[id] === 2 ? 2 : 1});
+// Major ที่สวมใส่ (เลือกในหน้าต่างสถานะ) · ถ้าไม่ถูกต้อง (เช่น ไม่มีไพ่ใบนั้น) ใช้ใบแรกที่มี
+function equippedMajor() {
+  let e = SAVE.equipMajor;
+  if (!e || !SAVE.owned[e.id]) e = SAVE.equipMajor = {id:MAJORS.find(M => SAVE.owned[M.id]).id, rev:false};
+  if (e.rev && !canRev(e.id)) e.rev = false;
+  return e;
+}
 function beginArcana() {
-  AR = {step:0, major:null, minors:[], offers: shuffle(MAJORS.filter(M => SAVE.owned[M.id])).slice(0, 3).map(M => offer(M.id))};
+  const em = equippedMajor();
+  AR = {step:1, major:{id:em.id, rev:em.rev, form:canAlt(em.id) && SAVE.form[em.id] === 2 ? 2 : 1}, minors:[], offers:[]};
+  AR.offers = drawMinorOffers();
   screen = 'arcana'; render();
 }
+function toggleOfferRev(i) { const e = AR.offers[i]; if (e && canRev(e.id)) { e.rev = !e.rev; render(); } }
 function drawMinorOffers() {
   const out = [];
   while (out.length < 3) {
@@ -1219,12 +1237,12 @@ function showGuide() {
     <li>แต่ละชั้นมี <b>เลเวลที่แนะนำ</b> ถ้าไม่ไหว กลับไปเล่นชั้นที่ผ่านแล้วเพื่อฟาร์มได้ แต่ได้ EXP <b>50%</b> และลดลงอีกถ้าเลเวลสูงกว่าที่แนะนำ</li>
     <li>รีเซ็ตแต้มได้ในราคา 🪙 เหรียญ</li></ul>
 
-    <h3>🔮 ก่อนออกเดินทาง: ดูดวง</h3>
-    <ul><li>เลือก <b>Major Arcana</b> 1 จาก 3 ใบ เป็นพลังหลักตลอดรอบ</li>
-    <li>เลือก <b>Minor Arcana</b> อีก 2 ใบ (ครั้งละ 1 จาก 3)</li>
-    <li>ไพ่ <b>กลับหัว 🔻</b> (โอกาส 30%) ผลแรงขึ้น แต่มีข้อเสีย ⚠</li>
+    <h3>🔮 ไพ่อาร์คานา</h3>
+    <ul><li><b>ไพ่หลัก (Major)</b> สวมใส่เองได้ 1 ใบ ที่หน้า 🧙 ตัวละคร (เลือกจากไพ่ที่คุณมี) เป็นพลังหลักตลอดรอบ</li>
+    <li><b>ไพ่รอง (Minor)</b> ทุกครั้งที่เข้าชั้น ระบบสุ่มมา 3 ใบ ให้เลือก 1 ใบ ทำ 2 ครั้ง (สุ่มจากไพ่ที่คุณมี)</li>
     <li>Minor ที่ <b>ธาตุเดียวกับ Major</b> ได้ผล +25%</li>
-    <li>สุ่มเฉพาะจากไพ่ที่คุณมีในสมุดไพ่</li></ul>
+    <li><b>ไพ่กลับหัว 🔻</b> ผลแรงขึ้น แต่มีข้อเสีย ⚠ ใช้ได้เฉพาะไพ่ที่ <b>มีครบ 4 ใบ</b> เลือกสลับได้เอง (Major: ที่หน้าตัวละคร · Minor: ตอนเลือก)</li>
+    <li>ไพ่ซ้ำช่วยปลุกพลังภาพไพ่ ปลดล็อกร่างที่สอง (3 ใบ) และการกลับหัว (4 ใบ)</li></ul>
 
     <h3>⚡ เกจพลังงาน</h3>
     <ul><li>สูงสุด 5 · เริ่มการต่อสู้เต็ม · <b>ฟื้น +1 ทุกต้นเทิร์น</b></li>
@@ -1312,6 +1330,46 @@ function selectTier(t) {
   SAVE.tower.sel = t; persist(); render();
 }
 function startTier() { SAVE.tower.sel = Math.min(SAVE.tower.sel, SAVE.tower.cleared + 1, TIERS); persist(); beginArcana(); }
+function equipMajorId(id) {
+  if (!SAVE.owned[id]) return;
+  SAVE.equipMajor = {id, rev:false}; persist(); closeModal(); render();
+}
+function toggleMajorRev() {
+  const e = equippedMajor();
+  if (!canRev(e.id)) return toast(`🔒 ต้องมีไพ่ใบนี้ครบ ${REV_AT} ใบ (ตอนนี้ ${copies(e.id)})`);
+  e.rev = !e.rev; persist(); render();
+}
+function toggleMajorForm() {
+  const id = equippedMajor().id;
+  if (!canAlt(id)) return toast(`🔒 ต้องมีไพ่ใบนี้ครบ ${ALT_AT} ใบ (ตอนนี้ ${copies(id)})`);
+  SAVE.form[id] = SAVE.form[id] === 2 ? 1 : 2; persist(); render();
+}
+function pickMajor() {
+  const cur = equippedMajor().id;
+  openModal(`<h2>✦ เลือกไพ่หลัก (Major)</h2>
+    <div class="muted">มี ${MAJORS.filter(M => SAVE.owned[M.id]).length}/22 ใบ · ไพ่ที่ยังไม่มีสุ่มได้ที่วิหารดวงดาว</div>
+    ${MAJORS.filter(M => SAVE.owned[M.id]).map(A => `<button class="arow ${A.id === cur ? 'cur' : ''}" style="--ec:${EL[A.el].c}" onclick="equipMajorId('${A.id}')">
+      <span class="ai">${A.icon}</span><span><b>${A.no} · ${A.en}</b> — ${A.th} <small>${EL[A.el].ic} ${EL[A.el].th} · ×${copies(A.id)}</small><br>${A.d(A.v)}</span></button>`).join('')}
+    <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
+}
+// สรุปพลังรวมที่ใส่อยู่ (ไพ่หลัก + เครื่องราง + สถานะ) · Minor สุ่มตอนเข้ารอบจึงยังไม่นับ
+function powerChips() {
+  const em = equippedMajor();
+  const m = buildMods({major:{id:em.id, rev:em.rev, form:canAlt(em.id) && SAVE.form[em.id] === 2 ? 2 : 1}, minors:[]}, SAVE.amu.equip.filter(Boolean), SAVE.hero.stats);
+  const c = [`❤ HP สูงสุด ${Math.max(20, 80 + m.maxHp)}`, `⚡ เกจสูงสุด ${MAXE + m.maxGauge}`, `✋ เติมมือ ${Math.min(HAND_MAX, HAND + m.handBonus)} ใบ`, `🪤 ช่องกับดัก ${TRAP_LIMIT + m.trapSlots}`];
+  if (m.startBlock) c.push(`🛡 เกราะเริ่มต้น ${m.startBlock}`);
+  if (m.turnBlock) c.push(`🛡 เกราะทุกเทิร์น +${m.turnBlock}`);
+  if (m.startStr) c.push(`💪 พลังเริ่มต้น ${m.startStr}`);
+  if (m.firstAtk) c.push(`🗡 โจมตีใบแรก +${m.firstAtk}`);
+  if (m.allAtk) c.push(`🗡 โจมตีทุกใบ +${m.allAtk}`);
+  if (m.dmgPct) c.push(`🗡 ดาเมจ +${Math.round(m.dmgPct * 100)}%`);
+  if (m.healWin) c.push(`💚 ฟื้น HP หลังชนะ ${m.healWin}`);
+  if (m.startThorns) c.push(`⛓ หนาม ${m.startThorns}`);
+  if (m.goldMult) c.push(`💰 ทอง +${Math.round(m.goldMult * 100)}%`);
+  if (m.rareChance) c.push(`🍀 ตำนาน +${m.rareChance.toFixed(1)}%`);
+  return c;
+}
+
 function spendPt(k) {
   const h = SAVE.hero;
   if (h.points <= 0 || h.stats[k] >= STAT_CAP) return;
@@ -1354,9 +1412,9 @@ const SCREENS = {
     <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น (ฉบับเต็ม)</button>
     <div class="box">
       <b>สรุปวิธีเล่น</b><br>
-      • ก่อนออกเดินทาง เลือก <b>Major Arcana</b> 1 จาก 3 ใบ แล้วเลือก <b>Minor Arcana</b> อีก 2 ใบ (สุ่มจากไพ่ที่คุณมี)<br>
+      • <b>ไพ่หลัก (Major)</b> สวมใส่เองในหน้า 🧙 ตัวละคร · ส่วน <b>Minor</b> 2 ใบสุ่ม 3 เลือก 1 ทุกครั้งที่เข้าชั้น<br>
       • สุ่มไพ่เพิ่มที่ <b>วิหารดวงดาว</b> · ไพ่ซ้ำปลุกพลังภาพไพ่ และครบ 3 ใบปลดล็อก <b>ร่างที่สอง</b> (บางใบ)<br>
-      • ไพ่อาจออก <b>กลับหัว</b>: ผลแรงขึ้นแต่มีข้อเสีย · Minor ธาตุเดียวกับ Major ได้ผล +25%<br>
+      • ไพ่ที่มีครบ <b>4 ใบ</b> เลือก <b>กลับหัว</b> ได้ (ผลแรงขึ้นแต่มีข้อเสีย) · Minor ธาตุเดียวกับ Major ได้ผล +25%<br>
       • <b>เกจพลังงาน ⚡</b> สูงสุด 5 เริ่มเต็ม ฟื้น +1 ทุกต้นเทิร์น (ใช้ไม่หมดเก็บไว้ได้)<br>
       • <b>ลากขึ้น</b> = ใช้การ์ด · <b>ลากลง</b> = ทิ้งการ์ด (หรือแตะการ์ดแล้วกดปุ่ม)<br>
       • ทิ้งการ์ด 🔋 ได้พลังงานคืน · ทิ้งการ์ด ⏳ วางกับดักที่ทำงานเอง (สูงสุด 2 อัน)<br>
@@ -1373,18 +1431,19 @@ const SCREENS = {
       <div class="chosen">💍 ${equipText()}</div>
       <button class="btn sec" onclick="amuBack='arcana';screen='amulets';render()">💍 จัดเครื่องราง</button>
       <button class="btn" onclick="newRun(AR)">⚔️ ออกผจญภัย</button>
-      <button class="link-btn" onclick="beginArcana()">🧪 ดูดวงใหม่ (สำหรับทดสอบต้นแบบ)</button></div>`;
+      <button class="link-btn" onclick="beginArcana()">🧪 สุ่ม Minor ใหม่ (สำหรับทดสอบต้นแบบ)</button></div>`;
     const isMajor = AR.step === 0;
     return `<div class="screen">
       <h2>${isMajor ? '🔮 ดวงชะตาของคุณ' : `🃏 เลือก Minor Arcana (${AR.step}/2)`}</h2>
       <div class="muted">${isMajor
         ? 'เลือก <b>Major Arcana</b> 1 ใบ — พลังหลักที่ติดตัวตลอดรอบ'
-        : 'Minor ที่ธาตุตรงกับ Major ได้ผล +25%'}</div>
+        : 'สุ่มมา 3 ใบ เลือก 1 · Minor ที่ธาตุตรงกับ Major ได้ผล +25%'}</div>
       ${!isMajor ? `<div class="chosen">Major: <span class="${AR.major.rev ? 'rev' : ''}">${ARC[AR.major.id].icon}</span> ${ARC[AR.major.id].en}
         · ${EL[ARC[AR.major.id].el].ic} ${EL[ARC[AR.major.id].el].th}
         ${AR.minors.map(e => ` + ${ARC[e.id].icon} ${ARC[e.id].en}`).join('')}</div>` : ''}
-      <div class="grid">${AR.offers.map((e, i) => tarotHTML(e, AR.major, '', `onclick="chooseArc(${i})"`)).join('')}</div>
-      <div class="muted">🔻 ไพ่กลับหัว (โอกาส ${pct(REV_CHANCE)}): ผลแรงขึ้น แต่มีข้อเสีย</div>
+      <div class="grid">${AR.offers.map((e, i) => `<div class="shopitem">${tarotHTML(e, AR.major, '', `onclick="chooseArc(${i})"`)}
+        ${canRev(e.id) ? `<button class="link-btn" onclick="toggleOfferRev(${i})">${e.rev ? '🔼 หงาย' : '🔻 กลับหัว'}</button>` : ''}</div>`).join('')}</div>
+      <div class="muted">🔻 ไพ่ที่คุณมีครบ ${REV_AT} ใบ เลือกกลับหัวได้ · ผลแรงขึ้น แต่มีข้อเสีย</div>
     </div>`;
   },
 
@@ -1476,16 +1535,36 @@ const SCREENS = {
         <span class="texp">${!locked && lv < recLevel(t) - 3 ? '⚠ ' : ''}⭐×${(tierExpMult(t) * m).toFixed(2)}<small>${done ? 'เล่นซ้ำ' : 'ครั้งแรก'}</small></span></button>`; }).join('')}
     <div class="muted">${lv < recLevel(sel) - 3 ? '⚠ เลเวลของคุณต่ำกว่าที่แนะนำมาก · ลองฟาร์มชั้นล่างก่อนก็ได้' : ''}</div>
     <div class="startbar" style="gap:8px"><button class="btn sec" onclick="screen='title';render()">กลับ</button>
-      <button class="btn" onclick="startTier()">🔮 ดูดวงแล้วเข้าชั้น ${sel}</button></div>
+      <button class="btn" onclick="startTier()">🃏 เลือก Minor แล้วเข้าชั้น ${sel}</button></div>
     <button class="link-btn" onclick="devUnlockTiers()">🧪 ทดสอบ: ปลดล็อกทุกชั้น</button>
   </div>`; },
 
   hero: () => {
-    const h = SAVE.hero, need = h.level >= LV_MAX ? 0 : expNeed(h.level);
+    const h = SAVE.hero, need = h.level >= LV_MAX ? 0 : expNeed(h.level), em = equippedMajor(), A = ARC[em.id];
+    const showM = {id:em.id, rev:em.rev, form:canAlt(em.id) && SAVE.form[em.id] === 2 ? 2 : 1};
     return `<div class="screen"><h2>🧙 ตัวละคร</h2>${walletHTML()}
     <div class="box" style="text-align:center"><b style="font-size:22px">Lv ${h.level}${h.level >= LV_MAX ? ' (สูงสุด)' : ''}</b>
       ${need ? `<div class="expbar"><i style="width:${h.exp / need * 100}%"></i><span>${h.exp}/${need} EXP</span></div>` : ''}
       แต้มสถานะคงเหลือ: <b style="color:#ffd25a;font-size:18px">${h.points}</b></div>
+
+    <div class="sect">✦ ไพ่หลัก (Major) ที่สวมใส่</div>
+    <div class="mjrow">${tarotHTML(showM, null, '', 'style="cursor:default"')}
+      <div class="mjctl">
+        <b>${A.en} · ${A.th}</b><span style="opacity:.75">มี ${copies(em.id)} ใบ</span>
+        <button class="btn" style="padding:8px 12px;font-size:14px" onclick="pickMajor()">🔄 เปลี่ยนไพ่</button>
+        <button class="btn sec" style="padding:8px 12px;font-size:14px" onclick="toggleMajorRev()">${canRev(em.id) ? (em.rev ? '🔼 สลับเป็นหงาย' : '🔻 สลับเป็นกลับหัว') : `🔒 กลับหัว (ครบ ${REV_AT} ใบ · มี ${copies(em.id)})`}</button>
+        ${A.alt ? `<button class="btn sec" style="padding:8px 12px;font-size:14px" onclick="toggleMajorForm()">${canAlt(em.id) ? '🔁 สลับร่าง' : `🔒 ร่างที่สอง (ครบ ${ALT_AT} ใบ · มี ${copies(em.id)})`}</button>` : ''}
+      </div></div>
+    <div class="muted">Minor Arcana 2 ใบ <b>สุ่ม 3 เลือก 1</b> ทุกครั้งที่เข้าชั้น · ไพ่ Minor ที่ครบ ${REV_AT} ใบเลือกกลับหัวได้</div>
+
+    <div class="sect">💍 เครื่องราง</div>
+    <div class="chosen">${equipText()}</div>
+    <button class="btn sec" onclick="amuBack='hero';screen='amulets';render()">💍 จัดเครื่องราง</button>
+
+    <div class="sect">📊 พลังรวมตอนนี้ (ยังไม่รวม Minor)</div>
+    <div class="pchips">${powerChips().map(t => `<span>${t}</span>`).join('')}</div>
+
+    <div class="sect">⭐ สถานะ</div>
     ${STATS.map(st => { const pt = h.stats[st.k]; return `<div class="amu"><span class="ai2">${st.icon}</span>
       <div class="ainfo"><b>${st.name} <span style="color:#ffd25a">${pt}/${STAT_CAP}</span></b><small>${st.d(pt)}<br><span style="opacity:.7">${st.per}</span></small></div>
       <button class="btn" style="padding:7px 16px" onclick="spendPt('${st.k}')" ${h.points > 0 && pt < STAT_CAP ? '' : 'disabled'}>＋</button></div>`; }).join('')}
