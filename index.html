@@ -333,6 +333,28 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .toast{border:1px solid rgba(255,255,255,.2);box-shadow:0 6px 20px rgba(0,0,0,.6)}
 .modal{background:radial-gradient(ellipse at top,rgba(44,34,64,.97),rgba(8,5,12,.97) 75%)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+/* เมนูหลัก */
+.screen.menu{justify-content:flex-start;gap:10px;padding-top:10px}
+.keyart{--ec:#e6b422;position:relative;width:100%;height:230px;border-radius:18px;overflow:hidden;border:2px solid var(--ec);box-shadow:0 0 26px color-mix(in srgb,var(--ec) 55%,transparent),0 8px 22px rgba(0,0,0,.6);background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--ec) 35%,#1a1230),#0d0916);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.keyart .kemoji{font-size:96px;filter:drop-shadow(0 0 18px var(--ec));animation:bob 3s ease-in-out infinite}
+.keyart .keyimg{display:none}
+.keyart.hasart .kemoji{display:none}
+.keyart.hasart .keyimg{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%;animation:slowzoom 14s ease-in-out infinite alternate}
+.kshade{position:absolute;inset:0;background:linear-gradient(transparent 35%,rgba(8,5,14,.92))}
+.ktitle{position:absolute;left:0;right:0;bottom:10px;text-align:center}
+.ktitle h1{font-size:34px}
+.ksub{font-size:12px;opacity:.85;margin-top:2px}
+.lvline{font-size:13px;opacity:.85;text-align:center}
+.btn.cta{width:100%;font-size:20px;padding:15px;animation:ctaglow 2s ease-in-out infinite alternate}
+@keyframes ctaglow{to{box-shadow:0 3px 0 #5a3f0c,inset 0 1px 0 rgba(255,255,255,.45),0 0 22px rgba(230,180,34,.6)}}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 4px;border-radius:14px;background:linear-gradient(160deg,#3a2f52,#1f1830);border:1px solid #6a5a8a;box-shadow:0 3px 0 #120d1c,inset 0 1px 0 rgba(255,255,255,.12);font-size:12.5px;color:var(--txt)}
+.tile:active{transform:translateY(2px);box-shadow:0 1px 0 #120d1c}
+.tile .tic{font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.tile .bdg{position:absolute;top:-6px;right:-4px;background:#d63c3c;color:#fff;font-size:10px;border-radius:10px;padding:1px 6px;border:1px solid #fff3}
+.menurow{display:flex;gap:8px;width:100%}.menurow .btn{flex:1;font-size:14px;padding:9px 6px}
+details.box summary{cursor:pointer}
 </style>
 </head>
 <body>
@@ -1617,23 +1639,28 @@ const topbar = () => `<div class="topbar">
   ${G.amu && G.amu.length ? `<div class="arcbar">💍 ${G.amu.map(e => `<button class="ai" onclick="event.stopPropagation();showAmuInfo('${e.id}',${e.tier})">${AMU[e.id].icon}<small style="font-size:9px;color:${TCOLOR[e.tier]}">${TROM[e.tier]}</small></button>`).join(' ')}<span style="opacity:.7">แตะเพื่อดู</span></div>` : ''}`;
 
 const SCREENS = {
-  title: () => `<div class="screen" style="justify-content:center">
-    <div style="font-size:72px">🛡️</div>
-    <h1>Knight's Deck</h1>
-    <div class="muted">ต้นแบบเกมการ์ดทาโรต์ · ธีมแฟนตาซี<br>คลาส: อัศวิน</div>
+  title: () => {
+    const em = equippedMajor(), A = ARC[em.id], pts = SAVE.hero.points;
+    const tile = (ic, label, click, badge = '') => `<button class="tile" onclick="${click}"><span class="tic">${ic}</span><span>${label}</span>${badge ? `<b class="bdg">${badge}</b>` : ''}</button>`;
+    return `<div class="screen menu">
     ${walletHTML()}
-    <div class="muted">🧙 Lv ${SAVE.hero.level}${SAVE.hero.points ? ` · <b style="color:#ffd25a">${SAVE.hero.points} แต้มสถานะ</b>` : ''} · 🏰 ผ่านถึงชั้น ${SAVE.tower.cleared}/${TIERS}</div>
-    <button class="btn" onclick="screen='tower';render()">🏰 เข้าหอคอย</button>
-    <button class="btn sec" onclick="screen='hero';render()">🧙 ตัวละคร (อัปสถานะ)</button>
-    <button class="btn sec" onclick="screen='shrine';render()">🌟 วิหารดวงดาว (สุ่มไพ่)</button>
-    <button class="btn sec" onclick="amuBack='title';screen='amulets';render()">💍 เครื่องราง (ใส่ ${SAVE.amu.equip.filter(Boolean).length}/2)</button>
-    <button class="btn sec" onclick="screen='forge';render()">🔨 ร้านช่างตี (ซื้อ/สุ่ม/รวมเครื่องราง)</button>
-    <button class="btn sec" onclick="screen='book';render()">📚 สมุดไพ่ (${Object.keys(SAVE.owned).length}/78)</button>
-    <button class="btn sec" onclick="showKitGallery()">📖 ไพ่ต่อสู้ Minor ทั้ง 56 ใบ</button>
-    <button class="btn sec" onclick="toggleParry()">🎯 ปัดตามจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
-    <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น (ฉบับเต็ม)</button>
-    <div class="box">
-      <b>สรุปวิธีเล่น</b><br>
+    <div class="keyart" style="--ec:${EL[A.el].c}"><span class="kemoji">${A.icon}</span>${artImg(em.id, 'keyimg')}<div class="kshade"></div>
+      <div class="ktitle"><h1>Knight's Deck</h1><div class="ksub">เกมการ์ดทาโรต์ · ไต่หอคอย 10 ชั้น</div></div></div>
+    <div class="lvline">🧙 Lv ${SAVE.hero.level} · ${A.en} ${EL[A.el].ic} · 🏰 ผ่านชั้น ${SAVE.tower.cleared}/${TIERS}</div>
+    <button class="btn cta" onclick="screen='tower';render()">⚔️ เข้าหอคอย</button>
+    <div class="tiles">
+      ${tile('🧙', 'ตัวละคร', "screen='hero';render()", pts ? pts : '')}
+      ${tile('🌟', 'วิหารดวงดาว', "screen='shrine';render()", SAVE.tickets ? '🎫' + SAVE.tickets : '')}
+      ${tile('📚', 'สมุดไพ่', "screen='book';render()", Object.keys(SAVE.owned).length + '/78')}
+      ${tile('💍', 'เครื่องราง', "amuBack='title';screen='amulets';render()", SAVE.amu.equip.filter(Boolean).length + '/2')}
+      ${tile('🔨', 'ร้านช่างตี', "screen='forge';render()")}
+      ${tile('📖', 'ไพ่ต่อสู้', 'showKitGallery()')}
+    </div>
+    <div class="menurow">
+      <button class="btn sec" onclick="toggleParry()">🎯 ปัดจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
+      <button class="btn sec" onclick="showGuide()">📘 วิธีเล่น</button>
+    </div>
+    <details class="box"><summary><b>สรุปวิธีเล่น</b> (แตะเพื่ออ่าน)</summary>
       • <b>Major</b> = อาชีพ · ให้พลังติดตัว + <b>ท่าไม้ตาย 🌟</b> ตามธาตุ (ใช้เมื่อหลอดพลังพิเศษเต็ม)<br>
       • <b>Minor 4 ใบ</b> = ไพ่ต่อสู้ของคุณ ติดตั้งในหน้า 🧙 ตัวละคร · แต่ละชุดมี ⚔️ โจมตี 🛡️ ป้องกัน ✨ บัฟ 🌀 พิเศษ<br>
       • สุ่มไพ่เพิ่มที่ <b>วิหารดวงดาว</b> · ไพ่ซ้ำปลุกพลังภาพไพ่ และครบ 4 ใบเลือก <b>กลับหัว</b> ได้ (แรงขึ้น ×1.4 แต่มีข้อเสีย)<br>
@@ -1644,7 +1671,9 @@ const SCREENS = {
       • ชนะการต่อสู้ได้ <b>ผงดาว ✨</b> ใช้สร้างไพ่ · กองไฟเปลี่ยนไพ่ต่อสู้ได้ 1 ใบ<br>
       • กล่องเหนือศัตรูบอกท่า <b>ตอนนี้</b> และ <b>ถัดไป</b> ใช้วางแผนล่วงหน้า 2 เทิร์น<br>
       • ไต่ <b>หอคอย 10 ชั้น</b> · แต่ละชั้น 4 ด่าน เลือกประตูได้ · ด่านที่ 4 คือบอส · ขึ้นเลเวลเพื่ออัปสถานะ
-    </div></div>`,
+    </div>
+    </details></div>`;
+  },
 
   arcana: () => {
     const M = ARC[AR.major.id], u = ULTS[M.el], empty = KIT_SLOTS - AR.minors.length;
