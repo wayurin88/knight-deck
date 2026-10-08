@@ -499,7 +499,9 @@ const TCOLOR = ['', '#b8b8c0', '#5ab0ff', '#b07cf0', '#ffd25a'];
 const MERGE_NEED = [4, 6, 9];                 // จำนวนชิ้นที่ใช้รวม: I→II, II→III, III→IV (×1.5 ทุกระดับ)
 const AMU_PRICE = 120;                        // ซื้อระดับ I ด้วยเหรียญ 🪙
 const AMU_PULL = 160;                         // สุ่มด้วยเพชร 1 ครั้ง
-const AMU_RATES = {t2:70, t3:25, t4:5}, AMU_PITY = 40;
+const AMU_RATES = {t2:88, t3:11.96, t4:0.04}, AMU_PITY = 30;   // IV ต่ำกว่า 0.05% · pity รับประกันระดับ III ทุก 30 ครั้ง
+const SHOP_MS = 30 * 60 * 1000, SHOP_N = 6;                     // ร้านเหรียญ: 6 ชิ้น รีเฟรชทุก 30 นาที
+let TIME_OFFSET = 0;                                            // ใช้ตอนทดสอบเลื่อนเวลา
 const AMUS = [
   {id:'bandage', icon:'🩹', name:'ผ้าพันแผลเก่า',   s:'ฟื้น HP ตอนจบเทิร์นคู่',          t:[1,2,2,3],       d:v=>`จบเทิร์นเลขคู่ของคุณ ฟื้น HP ${v}`, f:(m,v)=>m.turnEndHeal+=v},
   {id:'holy',    icon:'🧪', name:'ขวดน้ำศักดิ์สิทธิ์', s:'ฟื้น HP หลังชนะ',             t:[4,6,8,12],      d:v=>`ชนะการต่อสู้ ฟื้น HP ${v}`, f:(m,v)=>m.healWin+=v},
@@ -702,9 +704,24 @@ const isEquip = (id, t) => SAVE.amu.equip.some(e => e && e.id === id && e.tier =
 const availAmu = (id, t) => invN(id, t) - (isEquip(id, t) ? 1 : 0);
 function addAmu(id, t, n = 1) { (SAVE.amu.inv[id] = SAVE.amu.inv[id] || {})[t] = invN(id, t) + n; }
 let amuBack = 'title';
-function buyAmu(id) {
+// ร้านเหรียญ: สุ่ม 6 ชนิด (ชนิดละ 1 ชิ้น ระดับ I) เปลี่ยนทุก 30 นาทีตามเวลาจริง
+const shopSlot = () => Math.floor((Date.now() + TIME_OFFSET) / SHOP_MS);
+const shopLeftMs = () => SHOP_MS - ((Date.now() + TIME_OFFSET) % SHOP_MS);
+const fmtLeft = ms => { const t = Math.ceil(ms / 1000); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function ensureShop(force = false) {
+  const a = SAVE.amu, sl = shopSlot();
+  if (force || !a.shop || a.shop.slot !== sl) {
+    a.shop = {slot:sl, items:shuffle(AMUS).slice(0, SHOP_N).map(x => ({id:x.id, sold:false}))};
+    persist();
+  }
+  return a.shop;
+}
+function buyAmu(i) {
+  const it = ensureShop().items[i];
+  if (!it || it.sold) return;
   if (SAVE.amu.coins < AMU_PRICE) return toast('เหรียญไม่พอ');
-  SAVE.amu.coins -= AMU_PRICE; addAmu(id, 1); persist(); render(); toast(`${AMU[id].icon} ${AMU[id].name} ระดับ I +1`, 'info');
+  SAVE.amu.coins -= AMU_PRICE; it.sold = true; addAmu(it.id, 1); persist(); render();
+  toast(`${AMU[it.id].icon} ${AMU[it.id].name} ระดับ I +1`, 'info');
 }
 function pullAmu(n) {
   if (SAVE.gems < n * AMU_PULL) return toast('เพชรไม่พอ');
@@ -713,8 +730,8 @@ function pullAmu(n) {
   for (let i = 0; i < n; i++) {
     SAVE.amu.pity++;
     const r = Math.random() * 100;
-    const t = SAVE.amu.pity >= AMU_PITY || r < AMU_RATES.t4 ? 4 : r < AMU_RATES.t4 + AMU_RATES.t3 ? 3 : 2;
-    if (t === 4) SAVE.amu.pity = 0;
+    const t = r < AMU_RATES.t4 ? 4 : (SAVE.amu.pity >= AMU_PITY || r < AMU_RATES.t4 + AMU_RATES.t3) ? 3 : 2;
+    if (t >= 3) SAVE.amu.pity = 0;
     const id = pick(AMUS).id; addAmu(id, t); res.push({id, t});
   }
   persist(); render();
@@ -1169,9 +1186,9 @@ function showGuide() {
     <li>ก่อนออกผจญภัย <b>สวมใส่ได้ 2 ช่อง</b> (ชนิดเดียวกันใส่ซ้ำไม่ได้) จากหน้า "💍 เครื่องราง" หรือหน้าสรุปไพ่</li>
     <li>เครื่องรางเป็นตัวช่วยเรื่อง <b>ฟื้นตัว ป้องกัน จังหวะ และทรัพยากร</b> ไม่ใช่ดาเมจตรง ๆ</li></ul>
     วิธีได้มา ที่ <b>🔨 ร้านช่างตี</b>:
-    <ul><li><b>ซื้อระดับ I</b> ด้วย 🪙 เหรียญ (ได้จากการเล่นจบรอบ ไม่สุ่ม)</li>
+    <ul><li><b>ร้านเหรียญ</b> ขายระดับ I ด้วย 🪙 เหรียญ (ได้จากการเล่นจบรอบ) สุ่มมา 6 ชิ้น ชนิดละ 1 ชิ้น <b>เปลี่ยนทุก 30 นาที</b></li>
     <li><b>รวมเครื่องราง</b> ชนิดเดียวกันระดับเดียวกัน เป็นระดับถัดไป (I→II ใช้ 4 · II→III ใช้ 6 · III→IV ใช้ 9 ชิ้น) สำเร็จแน่นอน</li>
-    <li><b>สุ่มด้วยเพชร</b> ได้ระดับ II ขึ้นไปโดยตรง · มี pity รับประกันระดับ IV (ต้นแบบนี้ไม่มีการเก็บเงินจริง)</li>
+    <li><b>สุ่มด้วยเพชร</b> ได้ระดับ II ขึ้นไป (ระดับ IV แทบไม่ออก เน้นได้จากการรวม) · มี pity รับประกันระดับ III ทุก 30 ครั้ง (ต้นแบบนี้ไม่มีการเก็บเงินจริง)</li>
     <li>ชิ้นที่สวมใส่อยู่ ถูกนำไปรวมไม่ได้</li></ul>
 
     <h3>💡 เคล็ดลับสู้บอส</h3>
@@ -1264,19 +1281,20 @@ const SCREENS = {
   forge: () => `<div class="screen">
     <h2>🔨 ร้านช่างตี</h2>${walletHTML()}
     <div class="box muted" style="text-align:left">
-      <b>ระดับ I:</b> ซื้อตรง ๆ ด้วย 🪙 ${AMU_PRICE} (ไม่สุ่ม) · ได้ 🪙 จากการเล่นจบรอบ<br>
+      <b>ร้านเหรียญ:</b> ขายระดับ I ด้วย 🪙 ${AMU_PRICE} · สุ่มมา ${SHOP_N} ชิ้น เปลี่ยนทุก 30 นาที · ได้ 🪙 จากการเล่นจบรอบ<br>
       <b>รวมเครื่องราง:</b> ${MERGE_NEED.map((n, k) => `${TROM[k + 1]}→${TROM[k + 2]} ใช้ ${n} ชิ้น`).join(' · ')} (สำเร็จแน่นอน)<br>
-      <b>สุ่มด้วยเพชร</b> (💎 ${AMU_PULL}/ครั้ง): ระดับ II ${AMU_RATES.t2}% · III ${AMU_RATES.t3}% · IV ${AMU_RATES.t4}%<br>
-      <b>Pity:</b> ครบ ${AMU_PITY} ครั้งไม่ได้ระดับ IV ได้แน่นอน (นับแล้ว ${SAVE.amu.pity}/${AMU_PITY})</div>
+      <b>สุ่มด้วยเพชร</b> (💎 ${AMU_PULL}/ครั้ง): ระดับ II ${AMU_RATES.t2}% · III ${AMU_RATES.t3}% · <b>IV ${AMU_RATES.t4}%</b> (ระดับ IV เน้นได้จากการรวม)<br>
+      <b>Pity:</b> ครบ ${AMU_PITY} ครั้งไม่ได้ระดับ III ได้แน่นอน (นับแล้ว ${SAVE.amu.pity}/${AMU_PITY})</div>
     <div class="svc">
       <button onclick="pullAmu(1)">💎 สุ่ม 1<br><small>${AMU_PULL} เพชร</small></button>
       <button onclick="pullAmu(10)">💎 สุ่ม 10<br><small>${AMU_PULL * 10} เพชร</small></button>
       <button onclick="screen='shrine';render()">💎 เติมเพชร<br><small>(จำลอง)</small></button></div>
-    <div class="sect">ซื้อระดับ I · 🪙 ${AMU_PRICE}</div>
-    ${AMUS.map(a => `<div class="amu"><span class="ai2">${a.icon}</span><div class="ainfo"><b>${a.name}</b><small>${amuText(a.id, 1)} · มี ×${invN(a.id, 1)}</small></div>
-      <button class="btn" style="padding:7px 12px;font-size:13px" onclick="buyAmu('${a.id}')">🪙 ${AMU_PRICE}</button></div>`).join('')}
+    <div class="sect">🛒 ร้านเหรียญ · เปลี่ยนใน <span id="shopTimer">${fmtLeft(shopLeftMs())}</span></div>
+    ${ensureShop().items.map((it, i) => { const a = AMU[it.id]; return `<div class="amu" style="${it.sold ? 'opacity:.35' : ''}"><span class="ai2">${a.icon}</span><div class="ainfo"><b>${a.name}</b><small>${amuText(a.id, 1)} · มี ×${invN(a.id, 1)}</small></div>
+      <button class="btn" style="padding:7px 12px;font-size:13px" onclick="buyAmu(${i})" ${it.sold ? 'disabled' : ''}>${it.sold ? 'ขายแล้ว' : '🪙 ' + AMU_PRICE}</button></div>`; }).join('')}
     <div class="muted">ราคาและอัตราสุ่มเป็นค่าตั้งต้น ⚠ ต้นแบบนี้ไม่มีการเก็บเงินจริง</div>
     <button class="link-btn" onclick="SAVE.amu.coins+=1000;persist();render()">🧪 ทดสอบ: +1,000 🪙</button>
+    <button class="link-btn" onclick="ensureShop(true);render()">🧪 ทดสอบ: รีเฟรชร้านทันที</button>
     <div class="startbar"><button class="btn sec" onclick="amuBack='title';screen='amulets';render()">💍 เครื่องราง</button>
       <button class="btn sec" onclick="screen='title';render()">กลับ</button></div>
   </div>`,
@@ -1438,6 +1456,12 @@ function bindHand() {
     el.onpointercancel = () => { down = false; render(); };
   });
 }
+
+if (typeof setInterval === 'function') setInterval(() => {
+  if (screen !== 'forge') return;
+  if (SAVE.amu.shop && SAVE.amu.shop.slot !== shopSlot()) return render();
+  const el = $('#shopTimer'); if (el) el.textContent = fmtLeft(shopLeftMs());
+}, 1000);
 
 render();
 </script>
