@@ -2,7 +2,15 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#15121c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Knight's Deck">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>Knight's Deck — ต้นแบบ</title>
 <style>
 :root{--gold:#e6b422;--txt:#f1ece4}
@@ -257,6 +265,74 @@ button.arow{color:var(--txt);text-align:left}
 .rlabel{font-size:22px;font-weight:800}
 .choice{display:flex;flex-direction:column;gap:10px;width:100%}
 .choice .btn{width:100%}
+
+/* ---------- ลุคเกม 2D ---------- */
+#app{padding-top:env(safe-area-inset-top);background:
+ radial-gradient(1.5px 1.5px at 12% 18%,rgba(255,255,255,.7),transparent),radial-gradient(1px 1px at 68% 9%,rgba(255,255,255,.6),transparent),
+ radial-gradient(1.5px 1.5px at 85% 34%,rgba(255,226,150,.7),transparent),radial-gradient(1px 1px at 30% 55%,rgba(255,255,255,.5),transparent),
+ radial-gradient(1px 1px at 55% 78%,rgba(255,255,255,.5),transparent),radial-gradient(1.5px 1.5px at 8% 85%,rgba(200,220,255,.6),transparent),
+ radial-gradient(ellipse at top,#2c2240,#15121c 70%);animation:twinkle 6s ease-in-out infinite alternate}
+@keyframes twinkle{from{background-position:0 0,0 0,0 0,0 0,0 0,0 0,0 0}to{background-position:0 6px,0 -4px,0 5px,0 -6px,0 4px,0 -5px,0 0}}
+#app.enter>*{animation:enter .28s ease-out both}
+@keyframes enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.btn{position:relative;border:1px solid #f3d27a;box-shadow:0 3px 0 #5a3f0c,inset 0 1px 0 rgba(255,255,255,.45),0 4px 12px rgba(0,0,0,.4)}
+.btn.sec{border-color:#6a5a8a;box-shadow:0 3px 0 #1a1624,inset 0 1px 0 rgba(255,255,255,.12),0 4px 12px rgba(0,0,0,.35)}
+.topbar{background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,.35));border-bottom:1px solid rgba(230,180,34,.25)}
+.pill{border:1px solid rgba(255,255,255,.12)}
+h1{letter-spacing:1px;text-shadow:0 0 18px rgba(230,180,34,.55),0 2px 10px #000}
+h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
+.box,.arow,.amu{border:1px solid rgba(255,255,255,.08)}
+.door{background:linear-gradient(135deg,#3a2f52,#241d34);box-shadow:0 4px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s}
+.door:active{box-shadow:0 1px 6px rgba(0,0,0,.5)}
+.dart{filter:drop-shadow(0 4px 6px rgba(0,0,0,.6));animation:bob 2.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+
+/* ฉากต่อสู้ตามธาตุศัตรู */
+.enemy-zone{overflow:hidden;--sc1:#2a2145;--sc2:#14101f;--gl:#9aa;background:radial-gradient(ellipse at 50% 38%,var(--sc1),var(--sc2) 72%)}
+.enemy-zone.sc-fire{--sc1:#5a2312;--sc2:#1b0d0c;--gl:#ff8a50}
+.enemy-zone.sc-water{--sc1:#12365a;--sc2:#0a1424;--gl:#5ab0ff}
+.enemy-zone.sc-air{--sc1:#3a4a66;--sc2:#141a28;--gl:#cfe8ff}
+.enemy-zone.sc-earth{--sc1:#27481f;--sc2:#0d170c;--gl:#86d17a}
+.enemy-zone>*{position:relative;z-index:1}
+.scene-fx{position:absolute!important;inset:0;z-index:0!important;pointer-events:none;opacity:.55;background:
+ radial-gradient(2px 2px at 20% 80%,var(--gl),transparent),radial-gradient(2px 2px at 70% 70%,var(--gl),transparent),radial-gradient(1.5px 1.5px at 45% 90%,var(--gl),transparent),
+ radial-gradient(2px 2px at 85% 85%,var(--gl),transparent),radial-gradient(1.5px 1.5px at 10% 60%,var(--gl),transparent);background-size:100% 100%;animation:rise 5s linear infinite}
+@keyframes rise{from{transform:translateY(0);opacity:.7}to{transform:translateY(-40px);opacity:0}}
+.enemy-zone.stunned{animation:stunpulse .8s ease-in-out infinite alternate}
+@keyframes stunpulse{to{filter:brightness(1.25) saturate(1.2)}}
+.enemy-stage{position:relative;display:flex;flex-direction:column;align-items:center}
+.enemy-art{position:relative;z-index:2;animation:idle 3s ease-in-out infinite;filter:drop-shadow(0 0 14px var(--ec)) drop-shadow(0 8px 8px #000)}
+@keyframes idle{50%{transform:translateY(-6px) scale(1.03)}}
+.enemy-art.shake{animation:shake .35s,hitflash .35s}
+@keyframes hitflash{0%,60%{filter:brightness(2.4) drop-shadow(0 0 18px #fff)}100%{filter:drop-shadow(0 0 14px var(--ec)) drop-shadow(0 8px 8px #000)}}
+.enemy-art.lunge{animation:lunge .5s ease-in-out}
+@keyframes lunge{40%{transform:translateY(34px) scale(1.18)}100%{transform:none}}
+.ground{width:150px;height:22px;margin-top:-14px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%);z-index:1}
+.stunned .enemy-art{animation:wobble .5s ease-in-out infinite alternate}
+@keyframes wobble{from{transform:rotate(-6deg)}to{transform:rotate(6deg)}}
+.bar{border-radius:9px;border:1px solid rgba(0,0,0,.8);box-shadow:inset 0 2px 3px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.12)}
+.bar>i{background:linear-gradient(#ff7b6b,#c22b2b 55%,#8e1a1a);box-shadow:inset 0 2px 0 rgba(255,255,255,.35)}
+.bar.hp>i{background:linear-gradient(#8ff08a,#2fa84a 55%,#1c7a34)}
+.bar.hp{background:#10261a}
+.player-zone{background:linear-gradient(rgba(0,0,0,.2),rgba(0,0,0,.55));border-top:1px solid rgba(230,180,34,.25)}
+.portrait{--ec:#e6b422;position:relative;width:46px;height:46px;flex-shrink:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3b2a6e,#120c24);border:2px solid var(--ec);box-shadow:0 0 12px var(--ec);display:flex;align-items:center;justify-content:center;font-size:24px}
+.portrait i{position:absolute;right:-6px;bottom:-6px;font-size:15px;font-style:normal;background:#15101f;border:1px solid var(--ec);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.energy{animation:orb 2.4s ease-in-out infinite alternate}
+@keyframes orb{to{box-shadow:0 0 20px rgba(255,200,80,.85)}}
+
+/* การ์ดต่อสู้ ให้ดูเป็นการ์ดเกม */
+.kcard{background:linear-gradient(165deg,color-mix(in srgb,var(--ec) 32%,#2a2238),#16121f 62%);border-width:2px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.45),inset 0 0 14px color-mix(in srgb,var(--ec) 25%,transparent),0 5px 12px rgba(0,0,0,.55)}
+.kcard .kart{width:62%;aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle,color-mix(in srgb,var(--ec) 45%,#000),rgba(0,0,0,.35) 75%);border:1px solid color-mix(in srgb,var(--ec) 60%,transparent)}
+.kcard .kname{text-shadow:0 1px 2px #000}
+.kcard .krole{background:rgba(0,0,0,.55);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;top:3px}
+.kcard:not(.used):not(.cant):active{filter:brightness(1.2)}
+.kcard.sel{box-shadow:0 0 22px var(--ec),0 8px 18px rgba(0,0,0,.7)}
+.hand{background:linear-gradient(transparent,rgba(0,0,0,.35))}
+.controls{padding-bottom:calc(14px + env(safe-area-inset-bottom));background:rgba(0,0,0,.35)}
+.float{font-family:Georgia,serif;-webkit-text-stroke:1px rgba(0,0,0,.6)}
+.toast{border:1px solid rgba(255,255,255,.2);box-shadow:0 6px 20px rgba(0,0,0,.6)}
+.modal{background:radial-gradient(ellipse at top,rgba(44,34,64,.97),rgba(8,5,12,.97) 75%)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 </style>
 </head>
 <body>
@@ -1093,7 +1169,7 @@ function startCombat(eid) {
   E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:BEATS[el], brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge, ultMax = Math.max(5, ULT_MAX - m.ultCut);
   C = {kit:G.arc.minors.map(e => ({...e, used:false})), maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0, strT:0,
-       thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
+       thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, lungeE:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
        ult:Math.min(ultMax, m.startCharge), ultMax, starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
@@ -1204,6 +1280,7 @@ function enemyTurn() {
   }
   E.block = 0;
   const it = E.pattern[E.turn % E.pattern.length];
+  if (it.atk) C.lungeE = true;
   if (it.block) { E.block += it.block; fx('enemy', `+${it.block} 🛡`, '#8fd0ff'); }
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
   if (!it.atk) return enemyFinish();
@@ -1722,9 +1799,10 @@ const SCREENS = {
   combat: () => {
     const M = ARC[G.arc.major.id], u = ULTS[M.el], ready = C.ult >= C.ultMax;
     return `${topbar()}
-    <div class="enemy-zone" onclick="if(C.sel!==null){C.sel=null;render()}">
+    <div class="enemy-zone sc-${E.el} ${E.stun ? 'stunned' : ''}" onclick="if(C.sel!==null){C.sel=null;render()}">
+      <div class="scene-fx"></div>
       <div class="intent">${intentText()}</div>
-      <div class="enemy-art ${C.shakeE ? 'shake' : ''}" id="enemyEl">${E.art}</div>
+      <div class="enemy-stage"><div class="enemy-art ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.art}</div><div class="ground"></div></div>
       <div class="ename">${E.name} ${E.tag ? `<small>· ${E.tag}</small>` : ''}</div>
       <div class="bar"><i style="width:${E.hp / E.maxHp * 100}%"></i><span>${E.hp}/${E.maxHp}</span></div>
       <div class="bar brk"><i style="width:${E.brk / E.brkMax * 100}%"></i><span>${E.stun ? '😵 มึน!' : `💢 Break ${E.brk}/${E.brkMax}`}</span></div>
@@ -1743,8 +1821,9 @@ const SCREENS = {
       : `<span class="pillc">🃏 ใช้แล้ว ${C.played}/${C.kit.length}</span><span class="tip">แตะการ์ด 2 ครั้ง หรือลากขึ้น = ใช้ · ใบละ 1 ครั้ง/เทิร์น</span>`}</div>
     <div class="player-zone">
       <div class="energy">⚡${C.energy}<small style="font-size:11px">/${C.maxE}</small></div>
+      <div class="portrait" style="--ec:${EL[M.el].c}">🛡️<i>${M.icon}</i></div>
       <div class="pinfo ${C.shakeP ? 'shake' : ''}" id="playerEl">
-        <div class="bar"><i style="width:${G.hp / G.maxHp * 100}%"></i><span>🛡️ อัศวิน ${G.hp}/${G.maxHp}</span></div>
+        <div class="bar hp"><i style="width:${G.hp / G.maxHp * 100}%"></i><span>❤ ${G.hp}/${G.maxHp}</span></div>
         <div class="statuses">
           ${C.block ? `<span class="st blk">🛡 เกราะ ${C.block}</span>` : ''}
           ${C.str ? `<span class="st">💪 พลัง ${C.str}</span>` : ''}
@@ -1803,9 +1882,11 @@ const SCREENS = {
     <button class="btn sec" onclick="screen='tower';render()">🏰 กลับหอคอย</button></div>`,
 };
 
+let lastScreen = null;
 function render() {
+  if (screen !== lastScreen) { lastScreen = screen; app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); setTimeout(() => app.classList.remove('enter'), 320); }
   app.innerHTML = SCREENS[screen]();
-  if (screen === 'combat' && C) { bindHand(); flushFx(); C.shakeE = C.shakeP = false; }
+  if (screen === 'combat' && C) { bindHand(); flushFx(); C.shakeE = C.shakeP = C.lungeE = false; }
 }
 
 // ================= ควบคุมการ์ดในมือ (แตะ / ลาก) =================
@@ -1845,6 +1926,7 @@ if (typeof setInterval === 'function') setInterval(() => {
 }, 1000);
 
 render();
+if (typeof navigator !== 'undefined' && navigator.serviceWorker && typeof location !== 'undefined' && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
