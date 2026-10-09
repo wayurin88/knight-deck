@@ -401,6 +401,7 @@ details.box summary{cursor:pointer}
 /* ---------- พื้นหลังภาพ (ธีมราตรีทองคำ) ---------- */
 #app[data-scr=shrine]{background:linear-gradient(rgba(10,8,18,.2),rgba(10,8,18,.5)),url(art/ui/bg-shrine.jpg) center top/cover no-repeat #15121c}
 #app[data-scr=hero],#app[data-scr=book],#app[data-scr=forge],#app[data-scr=amulets],#app[data-scr=quests],#app[data-scr=tower],#app[data-scr=arcana]{background:url(art/ui/bg-page.jpg) center top/cover no-repeat #15121c}
+.enemy-art .eimg{display:block;height:min(230px,28dvh);width:auto;max-width:88%;margin:0 auto;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
 </style>
 </head>
 <body>
@@ -749,6 +750,8 @@ const REACT = {
   'dark+earth': {n:'รากสาปแช่ง',     ic:'🥀', d:'ทำลายเกราะศัตรู + เปราะบาง 2', f:() => { E.block = 0; applyE('vuln', 2); }},
 };
 const reactKey = (a, b) => [a, b].sort().join('+');
+const ENEMY_IMG = {};                                              // ภาพมอนสเตอร์ (พื้นโปร่งใส) · ตัวที่ยังไม่มีภาพใช้อีโมจิ
+['slime', 'goblin', 'skeleton', 'orc', 'darkknight', 'dragon'].forEach(k => ENEMY_IMG[k] = `art/monsters/mon-${k}.webp`);
 const ENEMIES = {
   slime:    {name:'สไลม์เขียว', art:'🟢', wk:1, bk:12, rh:{T:1500, seq:[1]}, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
   goblin:   {name:'ก็อบลินโจร', art:'👺', wk:3, bk:12, rh:{T:1150, seq:[1, .8]}, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
@@ -961,7 +964,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.7.4';
+const GAME_VER = '0.7.5';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -1348,7 +1351,7 @@ function startCombat(eid) {
   const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
   const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
   const el = elOf(d, t);
-  E = {tr:[], ...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:resOf(el), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  E = {tr:[], ...d, img:ENEMY_IMG[eid] || '', name:enemyName(d, el), el, wk:BEATEN_BY[el], res:resOf(el), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   E.thorn = E.tr.includes('thorns') ? Math.max(1, Math.round(2 * dK)) : 0;
   if (E.tr.includes('shield')) E.block += Math.round(12 * dK);
   E.wardMax = d.ward ? Math.round(d.ward * dK) : 0; E.ward = E.wardMax;
@@ -2593,7 +2596,7 @@ const SCREENS = {
       <div class="scene-fx"></div>
       <div class="intent">${intentText()}</div>
       ${C.stance ? `<div class="stance s" onclick="event.stopPropagation();toast('ไพ่โจมตีใบแรกจะถูกปัดและโดนสวนกลับ · ทะลุได้: ไพ่ธาตุที่ชนะบอส · ท่าไม้ตาย · ทำให้มึน · ล่อด้วย 👊','info')">🛡 ตั้งท่าปัด!</div>` : ''}
-      <div class="enemy-stage"><div class="enemy-art ${C.stance ? 'guarding' : ''} ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.art}</div><div class="ground"></div></div>
+      <div class="enemy-stage"><div class="enemy-art ${C.stance ? 'guarding' : ''} ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.img ? `<img class="eimg" src="${E.img}" alt="">` : E.art}</div><div class="ground"></div></div>
       <div class="ename">${E.name} ${E.tag ? `<small>· ${E.tag}</small>` : ''}</div>
       <div class="bar"><i style="width:${E.hp / E.maxHp * 100}%"></i><span>${E.hp}/${E.maxHp}</span></div>
       <div class="bar brk"><i style="width:${E.brk / E.brkMax * 100}%"></i><span>${E.stun ? '😵 มึน!' : `💢 Break ${E.brk}/${E.brkMax}`}</span></div>
