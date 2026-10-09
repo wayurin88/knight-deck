@@ -246,6 +246,7 @@ button.arow{color:var(--txt);text-align:left}
 .hintbox{position:absolute;top:96px;left:12px;right:12px;z-index:320;background:rgba(36,29,54,.97);border:1px solid #ffd25a;border-radius:12px;padding:9px 12px;font-size:13.5px;line-height:1.5;animation:enter .3s both;box-shadow:0 6px 20px rgba(0,0,0,.6)}
 .pr-txt{text-align:center;line-height:1.6;font-size:16px;text-shadow:0 2px 4px #000}
 .ultbtn{--ec:#ffd25a;flex:1;position:relative;overflow:hidden;background:rgba(0,0,0,.5);border:2px solid var(--ec);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;line-height:1.25;text-align:center;color:var(--txt)}
+.uhelp{display:inline-block;padding:0 6px;border-radius:10px;background:rgba(255,255,255,.15);font-size:11px}
 .ultbtn small{display:block;font-weight:400;font-size:11px;opacity:.85}
 .ultbtn i{position:absolute;left:0;bottom:0;height:4px;background:var(--ec)}
 .ultbtn.ready{background:linear-gradient(#5a4a10,#2e2508);box-shadow:0 0 14px var(--ec);animation:pulse 1s ease-in-out infinite alternate}
@@ -378,6 +379,22 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .menurow{display:flex;gap:8px;width:100%}.menurow .btn{flex:1;font-size:14px;padding:9px 6px}
 .svbox{width:100%;height:84px;background:rgba(0,0,0,.45);color:var(--txt);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px;font-size:11px;font-family:monospace;word-break:break-all;resize:none}
 details.box summary{cursor:pointer}
+
+/* ---------- กลุ่ม A: ปุ่มกลับบนสุด / ตัวกรองไพ่ / สัญญาณบอส ---------- */
+.backbar{position:sticky;top:-14px;z-index:30;align-self:stretch;margin:-14px -14px 0;padding:7px 10px;background:rgba(21,18,28,.96);border-bottom:1px solid rgba(230,180,34,.25);display:flex;align-items:center}
+.backbar button{font-size:14px;font-weight:700;color:var(--gold);padding:5px 12px;border-radius:16px;background:rgba(255,255,255,.08)}
+.kfbar{display:flex;flex-wrap:wrap;gap:5px;width:100%;justify-content:center}
+.kfc{font-size:12px;padding:4px 10px;border-radius:14px;background:rgba(255,255,255,.08);opacity:.75}
+.kfc.on{background:var(--gold);color:#1a1206;font-weight:700;opacity:1}
+.kopts{display:flex;flex-direction:column;gap:5px;width:100%}
+.kopts .sect{margin-top:4px}
+.arow.c{padding:5px 8px;font-size:11.5px;line-height:1.35;gap:8px;align-items:center}
+.arow.c .ai{font-size:19px;width:24px}
+.arow.c.rv{margin-left:18px;width:calc(100% - 18px);opacity:.9;border-left-color:#ff8a7a}
+.enemy-art.guarding{animation:guardflash .7s ease-in-out infinite alternate;filter:drop-shadow(0 0 14px #ff5a5a)}
+@keyframes guardflash{from{filter:drop-shadow(0 0 4px #ff5a5a) brightness(1)}to{filter:drop-shadow(0 0 20px #ff3030) brightness(1.5) saturate(1.4)}}
+.stance.s{padding:3px 12px;font-size:13px;font-weight:700}
+.qdone{border:1px solid #ffd25a;background:rgba(255,210,90,.1);border-radius:10px}
 </style>
 </head>
 <body>
@@ -938,7 +955,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.7.0';
+const GAME_VER = '0.7.1';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -1156,17 +1173,32 @@ function kitRev(i) {
   if (!canRev(e.id)) return toast(`🔒 ต้องมีไพ่ใบนี้ครบ ${REV_AT} ใบ (ตอนนี้ ${copies(e.id)})`);
   e.rev = !e.rev; persist(); render();
 }
-function kitOptions(major, onclick, exclude = []) {
-  return Object.entries(SUITS).map(([su, S]) => {
-    const own = MINORS.filter(n => n.suit === su && SAVE.owned[n.id] && !exclude.includes(n.id));
+const KF = {role:'all', suit:'all', args:null};
+function kitList() {
+  const [major, onclick, exclude] = KF.args;
+  const out = Object.entries(SUITS).filter(([su]) => KF.suit === 'all' || KF.suit === su).map(([su, S]) => {
+    const own = MINORS.filter(n => n.suit === su && SAVE.owned[n.id] && !exclude.includes(n.id) && (KF.role === 'all' || n.role === KF.role));
     if (!own.length) return '';
     return `<div class="sect">${S.icon} ${S.th} — ${EL[S.el].ic}ธาตุ${EL[S.el].th}</div>` + own.map(A => [false, true].filter(r => !r || canRev(A.id)).map(rev => {
       const k = minorMult(major, {id:A.id}) * (rev ? REV_K : 1);
-      return `<button class="arow" style="--ec:${EL[A.el].c}" onclick="${onclick(A.id, rev)}"><span class="ai">${ROLE[A.role].ic}</span><span>
+      return `<button class="arow c ${rev ? 'rv' : ''}" style="--ec:${EL[A.el].c}" onclick="${onclick(A.id, rev)}"><span class="ai">${ROLE[A.role].ic}</span><span>
         <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost} · ×${copies(A.id)}${rev ? ' · <span style="color:#ff8a7a">🔻 กลับหัว</span>' : ''}</small><br>
         ${A.ops.map(op => opText(op, k, rev, mastTier(A.id))).join(' · ')}${rev ? `<br><small class="bad">⚠ ${badOf(A).d}</small>` : ''}</span></button>`;
     }).join('')).join('');
   }).join('');
+  return out || '<div class="muted">ไม่มีไพ่ตามตัวกรองนี้</div>';
+}
+function kitOptions(major, onclick, exclude = []) {
+  KF.args = [major, onclick, exclude];
+  const chip = (k, v, label) => `<button class="kfc ${KF[k] === v ? 'on' : ''}" data-k="${k}" data-v="${v}" onclick="kitFilter('${k}','${v}')">${label}</button>`;
+  return `<div class="kfbar">${chip('role', 'all', 'ทุกหน้าที่')}${Object.entries(ROLE).map(([r, R]) => chip('role', r, `${R.ic} ${R.th}`)).join('')}</div>
+    <div class="kfbar">${chip('suit', 'all', 'ทุกชุด')}${Object.entries(SUITS).map(([su, S]) => chip('suit', su, `${S.icon} ${S.th}`)).join('')}</div>
+    <div id="kopts" class="kopts">${kitList()}</div>`;
+}
+function kitFilter(k, v) {
+  KF[k] = v;
+  document.querySelectorAll('.kfc').forEach(el => el.classList.toggle('on', KF[el.dataset.k] === el.dataset.v));
+  const box = $('#kopts'); if (box) box.innerHTML = kitList();
 }
 function pickKit(i) {
   const major = ARC[equippedMajor().id], kit = ensureKit();
@@ -1391,6 +1423,10 @@ function playKit(i) {
   if (C.played === 3 && (m.comboBlock || m.comboGain)) { if (m.comboBlock) block(m.comboBlock); if (m.comboGain) gainE(m.comboGain); }
   render();
   checkWin();
+}
+function ultHelp() {
+  const major = G.arc.major, M = ARC[major.id], sec = C.ultLeft <= 0, u = sec ? SECOND[M.el] : ULTS[M.el], k = sec ? (major.rev ? 1.3 : 1) : ultK(major);
+  toast(`<b>🌟 ${u.name}</b>${sec ? ' (ท่ารอง)' : ''}<br>${u.d(k)}<br><small>ชาร์จ ${C.ult}/${C.ultMax} · ใช้ไพ่ธาตุ ${EL[M.el].ic} ชาร์จ ×2${sec ? '' : ` · เหลือ ${C.ultLeft}/${C.ultTotal} ครั้ง`}</small>`, 'info');
 }
 function useUlt() {
   if (C.busy) return;
@@ -2460,18 +2496,19 @@ const SCREENS = {
 
   quests: () => {
     const q = ensureQuests(), today = q.streak.claimed === q.day, bar = x => `<div class="expbar" style="margin:3px 0"><i style="width:${x.have / x.n * 100}%"></i><span>${x.have}/${x.n}</span></div>`;
-    const qrow = (x, k, i) => `<div class="amu"><div class="ainfo"><b>${x.t}</b><small>รางวัล ${rewText(x.r)}</small>${bar(x)}</div>
+    const qrow = (x, k, i) => `<div class="amu ${x.have >= x.n && !x.claimed ? 'qdone' : ''}" style="${x.claimed ? 'opacity:.6' : ''}"><div class="ainfo"><b>${x.t}</b><small>รางวัล ${rewText(x.r)}</small>${bar(x)}</div>
       <button class="btn" style="padding:7px 12px;font-size:13px" onclick="claimQuest('${k}',${i})" ${x.claimed || x.have < x.n ? 'disabled' : ''}>${x.claimed ? '✅' : x.have >= x.n ? '🎁 รับ' : '⏳'}</button></div>`;
     const tabs = `<div class="menurow"><button class="btn ${QT === 'q' ? '' : 'sec'}" onclick="QT='q';render()">📋 ภารกิจ</button><button class="btn ${QT === 'a' ? '' : 'sec'}" onclick="QT='a';render()">🏅 ความสำเร็จ</button></div>`;
+    const qsort = (arr, k) => arr.map((x, i) => [x, i]).sort((a, b) => ((b[0].have >= b[0].n && !b[0].claimed) - (a[0].have >= a[0].n && !a[0].claimed)) || (a[0].claimed - b[0].claimed)).map(([x, i]) => qrow(x, k, i)).join('');
     const body = QT === 'q' ? `
       <div class="sect">📅 เข้าเล่นต่อเนื่อง · วันที่ ${q.streak.n}</div>
       <div class="menurow" style="flex-wrap:wrap">${STREAK.map((r, i) => `<div class="pill" style="flex:1;min-width:46px;text-align:center;${(q.streak.n - 1) % 7 === i ? 'border:1px solid #ffd25a;background:rgba(255,210,90,.18)' : ''}">${i + 1}<br><small>${rewText(r)}</small></div>`).join('')}</div>
       <button class="btn" style="width:100%" onclick="claimStreak()" ${today ? 'disabled' : ''}>${today ? '✅ รับรางวัลวันนี้แล้ว' : `🎁 รับรางวัลวันที่ ${(q.streak.n - 1) % 7 + 1}: ${rewText(STREAK[(q.streak.n - 1) % 7])}`}</button>
-      <div class="sect">☀️ ภารกิจรายวัน</div>${q.daily.map((x, i) => qrow(x, 'd', i)).join('')}
+      <div class="sect">☀️ ภารกิจรายวัน</div>${qsort(q.daily, 'd')}
       <button class="btn sec" style="width:100%" onclick="claimBonus()" ${q.bonus || !q.daily.every(x => x.claimed) ? 'disabled' : ''}>${q.bonus ? '✅ รับโบนัสแล้ว' : '🎁 ทำครบทั้ง 3 ข้อ: โบนัส 🎫 1'}</button>
-      <div class="sect">🗓 ภารกิจรายสัปดาห์</div>${q.weekly.map((x, i) => qrow(x, 'w', i)).join('')}
+      <div class="sect">🗓 ภารกิจรายสัปดาห์</div>${qsort(q.weekly, 'w')}
       <div class="muted">ภารกิจใช้เวลาของเครื่องคุณ รีเซ็ตรายวันตอนเที่ยงคืน รายสัปดาห์ตอนเที่ยงคืนวันอาทิตย์</div>`
-      : ACH.map(a => { const ok = a.c(), done = achDone(a); return `<div class="amu" style="${done ? 'opacity:.6' : ''}"><div class="ainfo"><b>${done ? '✅' : ok ? '🎁' : '🔒'} ${a.t}</b><small>${a.d} · 💎 ${a.g}</small></div>
+      : ACH.map(a => ({a, ok: a.c(), done: achDone(a)})).sort((x, y) => ((y.ok && !y.done) - (x.ok && !x.done)) || (x.done - y.done)).map(({a, ok, done}) => { return `<div class="amu ${ok && !done ? 'qdone' : ''}" style="${done ? 'opacity:.6' : ''}"><div class="ainfo"><b>${done ? '✅' : ok ? '🎁' : '🔒'} ${a.t}</b><small>${a.d} · 💎 ${a.g}</small></div>
         <button class="btn" style="padding:7px 12px;font-size:13px" onclick="claimAch('${a.id}')" ${done || !ok ? 'disabled' : ''}>${done ? 'รับแล้ว' : ok ? 'รับ' : '—'}</button></div>`; }).join('');
     return `<div class="screen"><h2>📋 ภารกิจ</h2>${walletHTML()}${tabs}${body}<div class="startbar"><button class="btn sec" onclick="screen='title';render()">กลับ</button></div></div>`;
   },
@@ -2525,8 +2562,8 @@ const SCREENS = {
     <div class="enemy-zone sc-${E.el} ${E.stun ? 'stunned' : ''}" onclick="if(C.sel!==null){C.sel=null;render()}">
       <div class="scene-fx"></div>
       <div class="intent">${intentText()}</div>
-      ${C.stance ? `<div class="stance">🛡⚔ บอสตั้งท่าปัด! ไพ่โจมตีใบแรกจะถูกปัดทิ้งและโดนสวนกลับ<br><small>ทะลุได้: ไพ่ธาตุที่ชนะบอส · ท่าไม้ตาย · ทำให้มึน · ใช้ 👊 ล่อให้เสียท่า</small></div>` : ''}
-      <div class="enemy-stage"><div class="enemy-art ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.art}</div><div class="ground"></div></div>
+      ${C.stance ? `<div class="stance s" onclick="event.stopPropagation();toast('ไพ่โจมตีใบแรกจะถูกปัดและโดนสวนกลับ · ทะลุได้: ไพ่ธาตุที่ชนะบอส · ท่าไม้ตาย · ทำให้มึน · ล่อด้วย 👊','info')">🛡 ตั้งท่าปัด!</div>` : ''}
+      <div class="enemy-stage"><div class="enemy-art ${C.stance ? 'guarding' : ''} ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.art}</div><div class="ground"></div></div>
       <div class="ename">${E.name} ${E.tag ? `<small>· ${E.tag}</small>` : ''}</div>
       <div class="bar"><i style="width:${E.hp / E.maxHp * 100}%"></i><span>${E.hp}/${E.maxHp}</span></div>
       <div class="bar brk"><i style="width:${E.brk / E.brkMax * 100}%"></i><span>${E.stun ? '😵 มึน!' : `💢 Break ${E.brk}/${E.brkMax}`}</span></div>
@@ -2563,7 +2600,7 @@ const SCREENS = {
     </div>
     <div class="hand" id="hand">${C.kit.map(kitCardHTML).join('')}</div>
     <div class="controls">
-      <button class="ultbtn ${ready ? 'ready' : ''}" style="--ec:${EL[M.el].c}" onclick="useUlt()">🌟 ${u.name}<small>${ready ? 'พร้อมใช้! แตะเพื่อปล่อย' : `ชาร์จ ${C.ult}/${C.ultMax}`} · ${sec ? 'ท่ารอง' : `เหลือ ${C.ultLeft}/${C.ultTotal}`}</small>
+      <button class="ultbtn ${ready ? 'ready' : ''}" style="--ec:${EL[M.el].c}" onclick="useUlt()">🌟 ${u.name} <span class="uhelp" onclick="event.stopPropagation();ultHelp()">❔</span><small>${ready ? 'พร้อมใช้! แตะเพื่อปล่อย' : `ชาร์จ ${C.ult}/${C.ultMax}`} · ${sec ? 'ท่ารอง' : `เหลือ ${C.ultLeft}/${C.ultTotal}`}</small>
         <i style="width:${C.ult / C.ultMax * 100}%"></i></button>
       <button class="basicbtn" onclick="basicAtk()" ${C.basicUsed ? 'disabled' : ''}>👊<small>ฟรี<br>+1⚡</small></button>
       <button class="basicbtn" onclick="guard()" ${C.guard || C.energy < 1 ? 'disabled' : ''}>🛡<small>ตั้งรับ<br>−1⚡</small></button>
@@ -2618,10 +2655,14 @@ const SCREENS = {
     <button class="link-btn" onclick="showFeedback()">💬 ส่งความเห็น</button></div>`,
 };
 
+const BACKS = {hero:"screen='title';render()", shrine:"screen='title';render()", book:"screen='title';render()", forge:"screen='title';render()", quests:"screen='title';render()", tower:"screen='title';render()",
+  amulets:() => "screen=amuBack;render()", arcana:"screen='tower';render()"};
 let lastScreen = null;
 function render() {
   if (screen !== lastScreen) { lastScreen = screen; app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); setTimeout(() => app.classList.remove('enter'), 320); }
   app.innerHTML = SCREENS[screen]();
+  const bk = BACKS[screen];
+  if (bk) { const sc = app.querySelector('.screen'); if (sc) sc.insertAdjacentHTML('afterbegin', `<div class="backbar"><button onclick="${typeof bk === 'function' ? bk() : bk}">‹ กลับ</button></div>`); }
   if (screen === 'combat' && C) { bindHand(); flushFx(); C.shakeE = C.shakeP = C.lungeE = false; }
 }
 
