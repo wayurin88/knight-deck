@@ -397,6 +397,10 @@ details.box summary{cursor:pointer}
 @keyframes guardflash{from{filter:drop-shadow(0 0 4px #ff5a5a) brightness(1)}to{filter:drop-shadow(0 0 20px #ff3030) brightness(1.5) saturate(1.4)}}
 .stance.s{padding:3px 12px;font-size:13px;font-weight:700}
 .qdone{border:1px solid #ffd25a;background:rgba(255,210,90,.1);border-radius:10px}
+
+/* ---------- พื้นหลังภาพ (ธีมราตรีทองคำ) ---------- */
+#app[data-scr=shrine]{background:linear-gradient(rgba(10,8,18,.2),rgba(10,8,18,.5)),url(art/ui/bg-shrine.jpg) center top/cover no-repeat #15121c}
+#app[data-scr=hero],#app[data-scr=book],#app[data-scr=forge],#app[data-scr=amulets],#app[data-scr=quests],#app[data-scr=tower],#app[data-scr=arcana]{background:url(art/ui/bg-page.jpg) center top/cover no-repeat #15121c}
 </style>
 </head>
 <body>
@@ -957,7 +961,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.7.3';
+const GAME_VER = '0.7.4';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -2691,6 +2695,7 @@ function render() {
   const oldSc = app.querySelector('.screen'), keepTop = (screen === lastScreen && !scrollReset && oldSc) ? oldSc.scrollTop : 0;
   scrollReset = false;
   if (screen !== lastScreen) { if (screen === 'title') navStack = []; else if (!navBack && lastScreen && (lastScreen === 'title' || BACKS[lastScreen]) && BACKS[screen]) { navStack.push(lastScreen); if (navStack.length > 20) navStack.shift(); } navBack = false; lastScreen = screen; app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); setTimeout(() => app.classList.remove('enter'), 320); }
+  app.dataset.scr = screen;
   app.innerHTML = SCREENS[screen]();
   if (keepTop) { const sc = app.querySelector('.screen'); if (sc) sc.scrollTop = keepTop; }
   const bk = BACKS[screen];
