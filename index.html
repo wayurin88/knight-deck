@@ -217,6 +217,7 @@ button.arow{color:var(--txt);text-align:left}
 .controls{gap:10px}
 .bar.brk{height:12px;background:#2b2410;margin-top:-2px}.bar.brk>i{background:linear-gradient(#e8c24a,#a07a10)}.bar.brk>span{font-size:9px;line-height:11px}
 .st.wk{background:#4a3a14;color:#ffe9a8}
+.st.tr{background:#4a2a3a;color:#ffd0e0}
 .kcard.wkhit{box-shadow:0 0 12px var(--ec),0 4px 10px rgba(0,0,0,.5)}
 .kcard .kwk.bad{background:#7a3030;color:#ffd0d0}
 .stains{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px}
@@ -363,10 +364,10 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .lvline{font-size:13px;opacity:.85;text-align:center}
 .btn.cta{width:100%;font-size:20px;padding:15px;animation:ctaglow 2s ease-in-out infinite alternate}
 @keyframes ctaglow{to{box-shadow:0 3px 0 #5a3f0c,inset 0 1px 0 rgba(255,255,255,.45),0 0 22px rgba(230,180,34,.6)}}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%}
-.tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 4px;border-radius:14px;background:linear-gradient(160deg,#3a2f52,#1f1830);border:1px solid #6a5a8a;box-shadow:0 3px 0 #120d1c,inset 0 1px 0 rgba(255,255,255,.12);font-size:12.5px;color:var(--txt)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%}
+.tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 4px;border-radius:14px;background:linear-gradient(160deg,#3a2f52,#1f1830);border:1px solid #6a5a8a;box-shadow:0 3px 0 #120d1c,inset 0 1px 0 rgba(255,255,255,.12);font-size:11.5px;color:var(--txt)}
 .tile:active{transform:translateY(2px);box-shadow:0 1px 0 #120d1c}
-.tile .tic{font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.tile .tic{font-size:26px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
 .tile .bdg{position:absolute;top:-6px;right:-4px;background:#d63c3c;color:#fff;font-size:10px;border-radius:10px;padding:1px 6px;border:1px solid #fff3}
 .menurow{display:flex;gap:8px;width:100%}.menurow .btn{flex:1;font-size:14px;padding:9px 6px}
 .svbox{width:100%;height:84px;background:rgba(0,0,0,.45);color:var(--txt);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:8px;font-size:11px;font-family:monospace;word-break:break-all;resize:none}
@@ -418,6 +419,7 @@ function atk(n, mult = 1) {
 }
 function hurtEnemy(d) {
   if (E.hp <= 0) return 0;
+  if (E.ward > 0 && d > 0) { const a = Math.min(E.ward, d); E.ward -= a; d -= a; fx('enemy', `🔮 ดูดซับ ${a}`, '#c9b6ff'); }
   const b = Math.min(E.block, d);
   E.block -= b; d -= b;
   E.hp = Math.max(0, E.hp - d);
@@ -724,11 +726,28 @@ const ENEMIES = {
   skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:2, bk:14, rh:{T:1250, seq:[1, .9]}, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
   orc:      {name:'ออร์คคลั่ง', art:'👹', wk:0, bk:16, rh:{T:1100, seq:[1.25, .75]}, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
   darkknight:{name:'อัศวินทมิฬ', tag:'ศัตรูพิเศษ', art:'🥷', wk:2, bk:18, rh:{T:1000, seq:[1, .8, 1.2], kinds:['n', 'hold', 'n']}, hp:[62,66], pattern:[{atk:10},{block:10,str:1},{atk:5,hits:3},{atk:14}]},
-  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:0, bk:24, rh:{T:1050, seq:[1, .7, 1.3, .85]}, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
+  dragon:   {name:'มังกรเพลิง', tag:'บอส', art:'🐉', wk:0, bk:24, st:[4, 3], rh:{T:1050, seq:[1, .7, 1.3, .85]}, hp:[105,105], pattern:[{atk:7,hits:2},{str:2,block:12},{atk:18},{atk:5,hits:3},{atk:9,block:15}]},
+  // --- ศัตรูทั่วไปใหม่ (ชั้น 2 ขึ้นไป) · tr = ลักษณะเฉพาะ: drain ดูดเลือด · thorns หนาม · shield โล่หนา · regen ฟื้นตัว · enrage คลั่ง · ward โล่วิญญาณ ---
+  wolf:     {name:'หมาป่าป่า', art:'🐺', wk:0, bk:12, rh:{T:1050, seq:[1, .75, .9]}, hp:[32,36], pattern:[{atk:3,hits:3},{atk:7},{str:1,block:3}]},
+  bat:      {name:'ค้างคาวถ้ำ', art:'🦇', wk:2, bk:10, tr:['drain'], rh:{T:950, seq:[1, .8]}, hp:[28,32], pattern:[{atk:4,hits:2},{atk:3,hits:2},{atk:2,block:5}]},
+  golem:    {name:'โกเลมหิน', art:'🗿', wk:3, bk:20, tr:['shield'], rh:{T:1500, seq:[1.2, .9], kinds:['hold', 'n']}, hp:[54,60], pattern:[{block:14},{atk:15},{atk:6,hits:2}]},
+  snake:    {name:'งูพิษ', art:'🐍', wk:1, bk:12, rh:{T:900, seq:[1, .8, .9]}, hp:[30,34], pattern:[{atk:5,hits:2},{atk:3,block:5},{atk:6,hits:2}]},
+  archer:   {name:'มือธนูกระดูก', art:'🏹', wk:2, bk:14, rh:{T:1200, seq:[1]}, hp:[36,40], pattern:[{atk:6},{atk:12},{block:6,str:1}]},
+  mushroom: {name:'เห็ดพิษ', art:'🍄', wk:3, bk:14, tr:['thorns'], rh:{T:1250, seq:[1, .9]}, hp:[36,40], pattern:[{atk:6},{block:8},{atk:4,hits:2}]},
+  wraith:   {name:'ผีสาว', art:'👻', wk:1, bk:14, tr:['regen'], rh:{T:1150, seq:[1, .8], fe:[1], feMin:3}, hp:[34,38], pattern:[{atk:4,hits:2},{atk:8},{block:6}]},
+  mage:     {name:'ก็อบลินนักเวท', art:'🧙', wk:0, bk:14, rh:{T:1100, seq:[1, .8], kinds:['n', 'accel']}, hp:[32,36], pattern:[{str:2},{atk:8,hits:2},{atk:12}]},
+  // --- ศัตรูพิเศษใหม่ ---
+  stoneknight:{name:'อัศวินหิน', tag:'ศัตรูพิเศษ', art:'🗿', wk:3, bk:20, tr:['shield', 'thorns'], rh:{T:1100, seq:[1, .9, 1.2], kinds:['n', 'n', 'hold']}, hp:[70,76], pattern:[{block:12,atk:4},{atk:14},{atk:6,hits:2},{atk:16}]},
+  witch:    {name:'แม่มดโลหิต', tag:'ศัตรูพิเศษ', art:'🧙‍♀️', wk:1, bk:18, tr:['drain'], rh:{T:1000, seq:[1, .8, 1], fe:[1]}, hp:[60,66], pattern:[{atk:5,hits:3},{block:8,str:1},{atk:10}]},
+  bear:     {name:'หมีคลั่ง', tag:'ศัตรูพิเศษ', art:'🐻', wk:0, bk:20, tr:['enrage'], rh:{T:1050, seq:[1, .8]}, hp:[76,82], pattern:[{atk:9},{atk:6,hits:2},{str:2},{atk:16}]},
+  // --- บอสใหม่ ---
+  troll:    {name:'ราชาโทรลล์', tag:'บอส', art:'👹', wk:3, bk:26, tr:['regen'], st:[3, 3], rh:{T:1400, seq:[1, .9, 1], style:'troll'}, hp:[115,115], pattern:[{atk:12},{block:14,str:1},{atk:8,hits:2},{atk:20}]},
+  spider:   {name:'ราชินีแมงมุม', tag:'บอส', art:'🕷️', wk:2, bk:26, rh:{T:800, seq:[1, .85, 1, .9, 1], style:'spider'}, hp:[105,105], pattern:[{atk:3,hits:4},{atk:5,hits:3,web:true},{block:10},{atk:4,hits:5,web:true}]},
+  lich:     {name:'ลิช', tag:'บอส', art:'☠️', wk:1, bk:28, ward:6, st:[5, 4], rh:{T:1100, seq:[1, 1, 1], style:'lich'}, hp:[105,105], pattern:[{atk:8,hits:2},{block:10,str:1},{atk:14},{atk:6,hits:3}]},
 };
 
 // ================= หอคอย · เลเวล · ประตู =================
-const NODE = {fight:{ic:'⚔️',name:'ต่อสู้'}, elite:{ic:'☠️',name:'ศัตรูพิเศษ'}, shop:{ic:'🛒',name:'ร้านเครื่องราง'}, rest:{ic:'🔥',name:'กองไฟ'}, boss:{ic:'🐉',name:'บอส'}};
+const NODE = {fight:{ic:'⚔️',name:'ต่อสู้'}, elite:{ic:'☠️',name:'ศัตรูพิเศษ'}, shop:{ic:'🛒',name:'ร้านเครื่องราง'}, rest:{ic:'🔥',name:'กองไฟ'}, mystery:{ic:'🎲',name:'ลึกลับ'}, boss:{ic:'🐉',name:'บอส'}};
 const TIERS = 10, STAGES = 4;                          // 10 ชั้น · ชั้นละ 4 ด่าน (ด่านที่ 4 = บอส)
 const LV_MAX = 30, PTS_PER_LV = 2, STAT_CAP = 15;      // เลเวลสูงสุด 30 · 2 แต้มต่อเลเวล · สถานะละไม่เกิน 15
 const EXPV = {fight:10, elite:25, boss:50};            // EXP ต่อด่าน (ชั้น 1)
@@ -764,19 +783,27 @@ function addExp(n) {
 }
 // ศัตรูต่อด่าน
 const DOOR_POOL = {1:['slime', 'goblin', 'skeleton'], 2:['goblin', 'skeleton', 'orc'], 3:['goblin', 'skeleton', 'orc']};
-const DOOR_W = [{k:'fight', w:4}, {k:'elite', w:2}, {k:'shop', w:2}, {k:'rest', w:2}];
+// ชั้น 2 ขึ้นไป: ศัตรูใหม่เข้ามาผสม · ศัตรูพิเศษสุ่ม 4 แบบ · บอสหมุนตามชั้น
+const NEW_POOL = {1:['wolf', 'bat', 'snake'], 2:['golem', 'archer', 'mushroom', 'wraith', 'mage'], 3:['golem', 'archer', 'mushroom', 'wraith', 'mage']};
+const TRAIT = {drain:['🩸 ดูดเลือด', 'ฟื้น HP ศัตรู 50% ของดาเมจที่ทำได้'], thorns:['🌵 หนาม', 'ใช้ไพ่โจมตีทุกครั้ง โดนสวนกลับเล็กน้อย'], shield:['🛡 โล่หนา', 'เริ่มการต่อสู้ด้วยเกราะมาก'],
+  regen:['💚 ฟื้นตัว', 'ฟื้น HP ทุก 3 เทิร์น (หยุดเมื่อมึน)'], enrage:['😡 คลั่ง', 'HP ต่ำกว่าครึ่ง ตีแรงขึ้นและหมัดเพิ่ม']};
+const ELITES = ['darkknight', 'stoneknight', 'witch', 'bear'];
+const BOSS_BY_TIER = {1:'dragon', 2:'troll', 3:'spider', 4:'lich', 5:'dragon', 6:'troll', 7:'spider', 8:'lich', 9:'dragon', 10:'troll'};
+const bossFor = t => BOSS_BY_TIER[Math.max(1, Math.min(10, t))] || 'dragon';
+const poolFor = (stage, tier) => tier >= 2 ? DOOR_POOL[stage].concat(NEW_POOL[stage]) : DOOR_POOL[stage];
+const DOOR_W = [{k:'fight', w:4}, {k:'elite', w:2}, {k:'shop', w:2}, {k:'rest', w:2}, {k:'mystery', w:2}];
 const REST_GUARANTEE = {tiers:1};                       // ชั้น ≤ ค่านี้: ด่าน 3 (ก่อนบอส) มีกองไฟทุกครั้ง
 function genDoors(stage, tier = 99) {
-  if (stage >= STAGES) return [{t:'boss', eid:'dragon'}];
-  const pool = DOOR_POOL[stage];
+  if (stage >= STAGES) return [{t:'boss', eid:bossFor(tier)}];
+  const pool = poolFor(stage, tier);
   if (stage === 1) return shuffle(pool).slice(0, 3).map(eid => ({t:'fight', eid}));   // ด่านแรกต่อสู้ทั้งหมด ได้การ์ดแน่นอน
   for (;;) {
     const types = [0, 1, 2].map(() => weighted(DOOR_W).k);
     const n = k => types.filter(x => x === k).length;
-    if (n('shop') > 1 || n('rest') > 1 || n('elite') > 1 || n('fight') + n('elite') < 1) continue;   // กันโชคร้าย
+    if (n('shop') > 1 || n('rest') > 1 || n('elite') > 1 || n('mystery') > 1 || n('fight') + n('elite') < 1) continue;   // กันโชคร้าย
     if (stage === STAGES - 1 && tier <= REST_GUARANTEE.tiers && n('rest') < 1) continue;            // ก่อนบอสต้องมีกองไฟ
     const ens = shuffle(pool); let ei = 0;
-    return types.map(t => t === 'fight' ? {t, eid:ens[ei++ % ens.length]} : t === 'elite' ? {t, eid:'darkknight'} : {t});
+    return types.map(t => t === 'fight' ? {t, eid:ens[ei++ % ens.length]} : t === 'elite' ? {t, eid:tier >= 2 ? pick(ELITES) : 'darkknight'} : {t});
   }
 }
 
@@ -906,7 +933,7 @@ if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
 const GAME_VER = '0.6.0';
-const newStats = () => ({first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
+const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
 persist();
@@ -1090,7 +1117,8 @@ function equippedMajor() {
 function autoKit() {
   const major = ARC[equippedMajor().id], kit = [];
   ['atk', 'def', 'buf', 'spc'].forEach(role => {
-    const score = n => (n.el === major.el ? 100 : supports(major.el, n.el) ? 60 : 0) + (n.cost <= 2 ? 50 : 0) + n.rank;
+    const ATK_SUIT = {wands:120, pentacles:90, swords:80, cups:40};          // ไพ่โจมตี: เลือกชุดที่ดาเมจดีก่อน (ธาตุตรง/ส่งเสริมเป็นโบนัส)
+    const score = n => (role === 'atk' ? ATK_SUIT[n.suit] + (n.el === major.el ? 60 : supports(major.el, n.el) ? 30 : 0) : (n.el === major.el ? 100 : supports(major.el, n.el) ? 60 : 0)) + (n.cost <= 2 ? 50 : 0) + n.rank;
     const own = MINORS.filter(n => SAVE.owned[n.id] && n.role === role && !kit.some(k => k && k.id === n.id)).sort((a, b) => score(b) - score(a));
     kit.push(own[0] ? {id:own[0].id, rev:false} : null);
   });
@@ -1153,7 +1181,7 @@ function newRun(arc = null) {
   const equip = SAVE.amu.equip.filter(Boolean).map(e => ({...e}));
   const m = buildMods(arc, equip, SAVE.hero.stats);
   const tier = Math.max(1, Math.min(TIERS, SAVE.tower.cleared + 1, SAVE.tower.sel || 1));
-  G = {arc, amu:equip, relics:[], mods:m, maxHp:Math.max(20, BASE_HP + m.maxHp), gold:Math.max(0, 99 + m.goldStart), dustGot:0, revived:false,
+  G = {arc, amu:equip, relics:[], boost:{card:{}, el:{}}, bonusHp:0, seenEv:[], mods:m, maxHp:Math.max(20, BASE_HP + m.maxHp), gold:Math.max(0, 99 + m.goldStart), dustGot:0, revived:false,
        tier, stage:1, cleared:0, expAcc:0, first:tier > SAVE.tower.cleared, lv0:SAVE.hero.level, node:null};
   G.hp = G.maxHp; G.doors = genDoors(1, tier);
   screen = 'doors'; render();
@@ -1162,7 +1190,7 @@ function newRun(arc = null) {
 function rebuildMods() {
   const old = G.maxHp;
   G.mods = buildMods(G.arc, [...G.amu, ...G.relics], SAVE.hero.stats);
-  G.maxHp = Math.max(20, BASE_HP + G.mods.maxHp);
+  G.maxHp = Math.max(20, BASE_HP + G.mods.maxHp + (G.bonusHp || 0));
   if (G.maxHp > old) G.hp += G.maxHp - old;
   G.hp = Math.min(G.hp, G.maxHp);
 }
@@ -1171,6 +1199,7 @@ function chooseDoor(i) {
   G.node = d;
   if (d.eid) startCombat(d.eid);
   else if (d.t === 'shop') openShop();
+  else if (d.t === 'mystery') openEvent();
   else { screen = 'rest'; render(); }
 }
 function nextFloor() {                                   // จบด่านนี้ → ไปด่านถัดไป
@@ -1180,7 +1209,7 @@ function nextFloor() {                                   // จบด่าน�
 function finishRun(win) {
   { const st = ST(), tr = st.byTier[G.tier] = st.byTier[G.tier] || {r:0, w:0};
     st.runs++; tr.r++; st.last = Date.now();
-    if (win) { st.wins++; tr.w++; } else st.deathStage[G.stage] = (st.deathStage[G.stage] || 0) + 1; }
+    if (win) { st.wins++; tr.w++; track('clear'); } else st.deathStage[G.stage] = (st.deathStage[G.stage] || 0) + 1; }
   const mult = expMult(G.first, G.lv0, G.tier);
   const exp = Math.round(G.expAcc * mult), lvUp = addExp(exp);
   if (win && G.tier > SAVE.tower.cleared) SAVE.tower.cleared = G.tier;     // ผ่านชั้นครั้งแรก → ปลดล็อกชั้นถัดไป
@@ -1219,11 +1248,11 @@ const ultUses = (id, kind) => (kind === 'normal' ? 1 : 2) + (ULT2.has(id) ? 1 : 
 const ultK = (major) => (major.rev ? 1.3 : 1) * (ULT2.has(major.id) ? 0.8 : 1);
 const ultMaxOf = id => Math.max(5, (copies(id) >= 7 ? 8 : ULT_MAX) - G.mods.ultCut);     // ไพ่ซ้ำ 7 ใบ: หลอดเต็มที่ 8
 const ultInfo = M => `ใช้ได้ ${ULT2.has(M.id) ? 2 : 1} ครั้งต่อมอนสเตอร์ (ศัตรูพิเศษ/บอส +1)${ULT2.has(M.id) ? ' · ท่าอ่อนลง 20% ต่อครั้ง' : ''} · ใช้ครบแล้วเปลี่ยนเป็นท่ารอง: ${SECOND[M.el].name}`;
-const kitK = e => (e.rev ? REV_K : 1) * minorMult(G.arc.major, e);
+const kitK = e => (e.rev ? REV_K : 1) * minorMult(G.arc.major, e) * (1 + ((G.boost && G.boost.card[e.id]) || 0) + ((G.boost && G.boost.el[ARC[e.id].el]) || 0));     // + โบนัสจากเหตุการณ์ในรอบ
 function kitCost(c) {                                          // ค่าพลังงานจริงของไพ่ใบนี้ตอนนี้
   const m = G.mods;
   if (C.freeLeft > 0) return 0;
-  let x = ARC[c.id].cost;
+  let x = ARC[c.id].cost + (C.web && C.played === 0 ? 1 : 0);
   if (C.totalPlayed === 0) x += m.firstExtra;
   if (C.played === 0 && C.turn % 2 === 0) x -= m.evenFirstDisc;
   return Math.max(0, x);
@@ -1234,7 +1263,7 @@ function applyStain(el) {                                      // ใช้ไ�
   if (st.length === 2 && st[0] !== st[1]) {
     const R = REACT[reactKey(st[0], st[1])];
     C.stains = [el]; C.curEl = null;
-    ST().reacts++; fx('enemy', `${R.ic} ${R.n}!`, '#ffd25a'); R.f();
+    ST().reacts++; track('react'); fx('enemy', `${R.ic} ${R.n}!`, '#ffd25a'); R.f();
     return;
   }
   if (boostFor(el)) { C.stains = [el]; return; }               // ตราคู่ซ้ำถูกใช้ไปกับไพ่ใบนี้แล้ว
@@ -1248,7 +1277,7 @@ function stanceCounter() {                                     // บอสส�
 function addBreak(n) {
   if (n <= 0 || E.stun > 0 || E.brkLock > 0 || E.hp <= 0) return;
   E.brk = Math.min(E.brkMax, E.brk + n);
-  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; C.stance = false; ST().breaks++; fx('enemy', '💥 Break! มึน', '#ffd25a'); }
+  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; C.stance = false; ST().breaks++; track('break'); fx('enemy', '💥 Break! มึน', '#ffd25a'); }
 }
 function basicAtk() {                                          // โจมตีพื้นฐาน: ฟรี ดาเมจเล็ก ได้พลังงาน +1 (1 ครั้ง/เทิร์น)
   if (C.busy) return;
@@ -1256,6 +1285,7 @@ function basicAtk() {                                          // โจมต�
   C.basicUsed = true; C.sel = null; C.curEl = null;
   C.negate = C.stance ? 1 : 0; C.parried = false;
   atk(BASIC_DMG); C.atkCount++;
+  if (E.thorn) { G.hp = Math.max(1, G.hp - E.thorn); fx('player', `🌵 -${E.thorn}`, '#ff8a8a'); }
   C.negate = 0; if (C.parried) { C.parried = false; C.stance = false; fx('enemy', '🎣 ล่อท่าปัดสำเร็จ', '#9fe0ff'); }
   gainE(1); addBreak(1); ultAdd(1);
   render(); checkWin();
@@ -1271,10 +1301,13 @@ function startCombat(eid) {
   const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
   const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
   const el = elOf(d, t);
-  E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:resOf(el), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  E = {tr:[], ...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:resOf(el), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  E.thorn = E.tr.includes('thorns') ? Math.max(1, Math.round(2 * dK)) : 0;
+  if (E.tr.includes('shield')) E.block += Math.round(12 * dK);
+  E.wardMax = d.ward ? Math.round(d.ward * dK) : 0; E.ward = E.wardMax;
   const maxE = MAXE + m.maxGauge, ultMax = ultMaxOf(G.arc.major.id), nUlt = ultUses(G.arc.major.id, E.kind);
   C = {kit:G.arc.minors.map(e => ({...e, used:false})), maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0, strT:0,
-       thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, stance:false, negate:0, parried:false, lungeE:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
+       thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, web:false, webNext:false, stance:false, negate:0, parried:false, lungeE:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
        ult:Math.min(ultMax, m.startCharge), ultMax, ultLeft:nUlt, ultTotal:nUlt, autoLeft:Math.max(paNum(G.arc.major.id, 'auto'), paNum(G.arc.major.id, 'autoHeavy'), paNum(G.arc.major.id, 'fool'), paNum(G.arc.major.id, 'death')), starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
 }
@@ -1282,7 +1315,9 @@ function startTurn() {
   const m = G.mods;
   C.turn++; C.played = 0; C.atkCount = 0; C.strT = 0; C.basicUsed = false; C.guard = false;
   C.stance = false;                                            // บอสตั้งท่าปัด: ทุก 4 เทิร์น (HP ต่ำกว่าครึ่ง ทุก 3 เทิร์น)
-  if (E.kind === 'boss' && E.stun <= 0 && C.turn % (E.hp <= E.maxHp * 0.5 ? 3 : 4) === 0) { C.stance = true; fx('enemy', '🛡⚔ ตั้งท่าปัด!', '#ffd25a'); } C.reflectT = m.turnReflect;
+  if (E.kind === 'boss' && E.st && E.stun <= 0 && C.turn % (E.hp <= E.maxHp * 0.5 ? E.st[1] : E.st[0]) === 0) { C.stance = true; fx('enemy', '🛡⚔ ตั้งท่าปัด!', '#ffd25a'); }
+  C.web = C.webNext; C.webNext = false;                         // ใยแมงมุม: ไพ่ใบแรกของเทิร์นนี้เสีย +1⚡
+  E.ward = E.wardMax;                                          // โล่วิญญาณรีเซ็ตทุกเทิร์น C.reflectT = m.turnReflect;
   C.kit.forEach(c => c.used = false);
   const first = C.turn === 1;
   C.block = 0;
@@ -1326,10 +1361,12 @@ function playKit(i) {
   C.sel = null; c.used = true;
   C.curEl = A.el; C.boost = boostFor(A.el);
   const blk0 = C.block;
+  track('suit_' + A.suit);
   C.negate = C.stance && A.el !== E.wk && A.ops.some(o => o[0].startsWith('atk')) ? 1 : 0; C.parried = false;
   runOps(A.ops, kitK(c), c.rev, c.id);
   C.curEl = null; C.boost = false; C.negate = 0;
   if (C.parried) { C.parried = false; C.stance = false; stanceCounter(); }
+  if (E.thorn && A.ops.some(o => o[0].startsWith('atk'))) { G.hp = Math.max(1, G.hp - E.thorn); C.shakeP = true; fx('player', `🌵 -${E.thorn}`, '#ff8a8a'); }
   const mt = mastTier(c.id);
   if (mt) {                                                    // ผลเสริมจากไพ่ซ้ำ (3 / 7 ใบ)
     if (A.role === 'atk') addBreak(mt);
@@ -1352,7 +1389,7 @@ function useUlt() {
   C.ult = 0; C.sel = null;
   if (!sec) C.ultLeft--;
   fx('player', `🌟 ${u.name}`, '#ffe27a');
-  ST().ults++;
+  ST().ults++; track('ult');
   C.curEl = M.el; u.f(k); C.curEl = null; addBreak(sec ? 2 : 4);
   if (M.el === 'light' || M.el === 'dark') { C.stains.push(M.el); if (C.stains.length > 2) C.stains.shift(); }      // ท่าไม้ตายแสง/มืด ให้ตราธาตุ
   render();
@@ -1366,6 +1403,12 @@ function endTurn() {
   if (G.mods.turnEndHeal && C.turn % 2 === 0) heal(G.mods.turnEndHeal);
   render();
   setTimeout(enemyTurn, 450);
+}
+// ท่าที่ศัตรูใช้ (คลั่ง: HP ต่ำกว่าครึ่ง ตีแรงขึ้น 25% และหมัดเพิ่ม 1 ถ้าเป็นท่าหลายหมัด)
+function curAct(i = E.turn) {
+  const base = E.pattern[i % E.pattern.length];
+  if (E.tr.includes('enrage') && E.hp <= E.maxHp * 0.5 && base.atk) return {...base, atk:Math.round(base.atk * 1.25), hits:base.hits > 1 ? base.hits + 1 : base.hits};
+  return base;
 }
 const enemyDmg = base => Math.floor((base + E.str) * (E.weak > 0 ? .75 : 1) * matchK());
 // เอฟเฟกต์ Major เมื่อปัดสำเร็จ (ปัดสมบูรณ์ = เต็ม · หลบ = ครึ่งหนึ่ง · Major กลับหัว ×1.4) · ไม่ผ่านระบบธาตุ/จุดอ่อน
@@ -1443,24 +1486,29 @@ const ringSlow = () => 1 + paVal(G.arc.major.id, 'slow') / 100 + (assistOn() ? 0
 function ringPlan(n) {
   const rh = E.rh, boss = E.kind === 'boss', p2 = boss && E.hp <= E.maxHp * 0.5, base = rh.T * (p2 ? 0.85 : 1), plan = [];
   for (let i = 0; i < n; i++) {
-    let mult = rh.seq[i % rh.seq.length], kind = (rh.kinds && rh.kinds[i % rh.kinds.length]) || 'n', gap = 320;
-    if (boss) {
-      if (E.el === 'water') mult *= i % 2 ? 0.6 : 1.4;                       // น้ำ: ช้า-เร็วสลับ
-      else if (E.el === 'air') mult *= 0.8 + Math.random() * 0.5;            // ลม: ความเร็วสุ่มเล็กน้อย
-      else if (E.el === 'earth' && i === n - 1 && n > 1) { kind = 'hold'; mult *= 1.5; }   // ดิน: หมัดท้ายหยุดค้างนาน
-      else if (E.el === 'fire' && i % 2) kind = 'accel';                     // ไฟ: เร่งปลาย
-      else if (E.el === 'light' && i % 2) kind = 'hold';                     // แสง: สลับหยุดค้าง
-      else if (E.el === 'dark' && i === 1) plan.push({hit:false, T:Math.round(base * 0.75), kind:'feint', gap:200});   // มืด: หมัดหลอกกลางท่า
-      if (p2 && n >= 2 && i < 2) { mult *= 0.6; gap = i === 0 ? 120 : 320; kind = 'n'; }   // เฟส 2: สองหมัดแรกติดกัน
+    let mult = rh.seq[i % rh.seq.length], kind = (rh.kinds && rh.kinds[i % rh.kinds.length]) || 'n', gap = 320, feint = false;
+    if (rh.style === 'troll') { if (i === n - 1 && n > 1) { kind = 'hold'; mult *= 1.4; } }                 // โทรลล์: หมัดท้ายหนักและหยุดค้าง
+    else if (rh.style === 'spider') feint = p2 ? i % 2 === 1 : i === 2;                                    // แมงมุม: หมัดหลอกแทรก (เฟส 2 ถี่ขึ้น)
+    else if (rh.style === 'lich') { if (i % 2 === 0) { kind = 'hold'; mult *= 1.3; } else { mult *= 0.6; gap = 120; } }   // ลิช: หน่วงแล้วตามติด
+    else if (boss) {                                                                                        // มังกร: ตามธาตุ
+      if (E.el === 'water') mult *= i % 2 ? 0.6 : 1.4;
+      else if (E.el === 'air') mult *= 0.8 + Math.random() * 0.5;
+      else if (E.el === 'earth' && i === n - 1 && n > 1) { kind = 'hold'; mult *= 1.5; }
+      else if (E.el === 'fire' && i % 2) kind = 'accel';
+      else if (E.el === 'light' && i % 2) kind = 'hold';
+      else if (E.el === 'dark' && i === 1) feint = true;
+      if (p2 && n >= 2 && i < 2) { mult *= 0.6; gap = i === 0 ? 120 : 320; kind = 'n'; }
+      if (p2 && E.el === 'fire' && i % 2 === 1) feint = true;
     }
-    if (p2 && E.el === 'fire' && i % 2 === 1) plan.push({hit:false, T:Math.round(base * 0.7), kind:'feint', gap:200});   // ไฟเฟส 2: หมัดหลอก
+    if (rh.fe && rh.fe.includes(i) && G.tier >= (rh.feMin || 1)) feint = true;                              // ศัตรูที่มีหมัดหลอกเฉพาะ
+    if (feint) plan.push({hit:false, T:Math.round(base * 0.72), kind:'feint', gap:200});
     plan.push({hit:true, T:Math.max(650, Math.round(base * mult)), kind, gap});
   }
   return plan;
 }
 const kindIc = k => ({n:'⚪', hold:'⏸', accel:'⚡', feint:'🔴'}[k] || '⚪');
 const planHint = (it) => {                                      // คำใบ้ในกล่องท่าศัตรู (ศัตรูพิเศษ/บอส)
-  if (!it.atk || E.kind === 'normal' || !parryOn()) return '';
+  if (!it.atk || !parryOn()) return '';
   const plan = ringPlan(it.hits || 1), id = G.arc.major.id, pa = paOf(id) && paOf(id).k;
   if (pa === 'seePlan') return ` <small>🎯 ${plan.map(r => kindIc(r.kind)).join(' ')}</small>`;
   if (pa === 'seeFeint') return plan.some(r => r.kind === 'feint') ? ` <small>⚠ หมัดหลอก ที่ ${plan.map((r, i) => r.kind === 'feint' ? i + 1 : 0).filter(Boolean).join(',')}</small>` : '';
@@ -1494,7 +1542,7 @@ function enemyTurn() {
     return setTimeout(() => { C.busy = false; startTurn(); }, 650);
   }
   E.block = 0;
-  const it = E.pattern[E.turn % E.pattern.length];
+  const it = curAct();
   if (it.atk) C.lungeE = true;
   if (it.block) { E.block += it.block; fx('enemy', `+${it.block} 🛡`, '#8fd0ff'); }
   if (it.str) { E.str += it.str; fx('enemy', `💪 +${it.str}`, '#ffb347'); }
@@ -1518,6 +1566,7 @@ function enemyTurn() {
     if (useParry) { const sc = grades.reduce((a, g) => a + (g === 'perfect' ? 1 : g === 'good' ? .5 : 0), 0) / n; level = sc >= (cp >= 3 ? .7 : .85) ? 1 : sc >= (cp >= 3 ? .3 : .4) ? half : 0; }
     else if (C.guard) level = half;                            // ปิดโหมดปัด: ตั้งรับสำเร็จ = หลบ
     if (G.hp > 0 && E.hp > 0) parryEffect(level, incoming);
+    if (it.web) { C.webNext = true; fx('player', '🕸 ติดใย', '#d0d0e0'); }
     enemyFinish();
   };
   const upgrade = g => {                                       // ตัวช่วย: ครั้งแรกที่พลาด = หลบ (Fool) · โชค (Wheel)
@@ -1547,7 +1596,7 @@ function enemyTurn() {
         if (grade === 'perfect') { fx('player', auto ? '🛡 ปัดอัตโนมัติ!' : '✨ ปัดสมบูรณ์!', '#ffe27a'); if (!rewarded) { rewarded = true; gainE(1); ultAdd(1); } }
         else if (grade === 'good') fx('player', auto ? '🛡 หลบอัตโนมัติ' : '👍 หลบ!', '#9fe0ff');
         else fx('player', 'พลาด', '#aaa');
-        if (!auto && ST().parry[grade] !== undefined) ST().parry[grade]++;
+        if (!auto && ST().parry[grade] !== undefined) { ST().parry[grade]++; if (grade === 'perfect') track('perfect'); }
       }
       incoming += enemyHit(it);
       next();
@@ -1565,6 +1614,7 @@ function enemyHit(it) {                                        // ศัตร�
   G.hp = Math.max(0, G.hp - d);
   fx('player', d > 0 ? `-${d}` : 'ป้องกัน', d > 0 ? '#ff6b6b' : '#9fc0dd');
   if (d > 0) C.shakeP = true;
+  if (d > 0 && E.tr.includes('drain')) { const h = Math.floor(d * 0.5); if (h > 0) { E.hp = Math.min(E.maxHp, E.hp + h); fx('enemy', `🩸 +${h}`, '#ff8aa8'); } }
   if (C.thorns) hurtEnemy(C.thorns);
   if (C.reflectT) hurtEnemy(C.reflectT);
   if (m.starHeal && !C.starUsed && G.hp > 0 && G.hp < G.maxHp * .3) { C.starUsed = true; heal(m.starHeal); }
@@ -1574,6 +1624,7 @@ function enemyHit(it) {                                        // ศัตร�
   return raw;
 }
 function enemyFinish() {
+  if (E.tr.includes('regen') && E.turn % 3 === 2 && E.hp > 0) { const h = Math.max(1, Math.round(E.maxHp * 0.04)); E.hp = Math.min(E.maxHp, E.hp + h); fx('enemy', `💚 +${h}`, '#7ef08a'); }
   E.turn++;
   if (E.vuln > 0) E.vuln--;
   if (E.weak > 0) E.weak--;
@@ -1588,11 +1639,12 @@ function intentParts(it, str, weak) {
   if (it.atk) parts.push(`🗡️ ${Math.floor((it.atk + str) * (weak > 0 ? .75 : 1) * matchK())}${it.hits > 1 ? ' ×' + it.hits : ''}`);
   if (it.block) parts.push(`🛡️ เกราะ ${it.block}`);
   if (it.str) parts.push(`💪 พลัง +${it.str}`);
+  if (it.web) parts.push('🕸 ใย');
   return parts.join(' + ');
 }
 function intentText() {
   if (E.stun > 0) return `<div class="now">ตอนนี้: <b>😵 มึน — ข้ามเทิร์นนี้</b></div><div class="next">ท่าที่เตรียมไว้ยังไม่ถูกใช้ · ตีให้หนักตอนนี้!</div>`;
-  const n = E.pattern.length, now = E.pattern[E.turn % n], next = E.pattern[(E.turn + 1) % n];
+  const now = curAct(E.turn), next = curAct(E.turn + 1);
   // ท่าถัดไป: รวมพลังที่ศัตรูจะได้จากท่านี้ และอ่อนแรงที่จะลดลง 1
   const nextTxt = intentParts(next, E.str + (now.str || 0), Math.max(0, E.weak - 1));
   return `<div class="now">ตอนนี้: <b>${intentParts(now, E.str, E.weak)}</b>${planHint(now)}</div><div class="next">ถัดไป: ${nextTxt}${planHint(next)}</div>`;
@@ -1604,16 +1656,54 @@ function winCombat() {
   if (!C || !E) return;                                       // กันเรียกซ้ำ
   const m = G.mods, n = G.node;
   G.expAcc += EXPV[n.t] * tierExpMult(G.tier); G.cleared++;
-  ST().combats++; ST().turns += C.turn;
-  const gold = Math.round((n.t === 'elite' ? rand(35, 45) : n.t === 'boss' ? 100 : rand(15, 25)) * (1 + m.goldMult)) + m.killGold;
+  ST().combats++; ST().turns += C.turn; track('combat');
+  if (n.t === 'boss') { ST().bosses = ST().bosses || {}; ST().bosses[n.eid] = (ST().bosses[n.eid] || 0) + 1; }
+  const x = n.x2 ? 2 : 1;                                       // ศึกท้าทาย: รางวัล ×2
+  const gold = (Math.round((n.t === 'elite' ? rand(35, 45) : n.t === 'boss' ? 100 : rand(15, 25)) * (1 + m.goldMult)) + m.killGold) * x;
   G.gold += gold;
-  const dust = Math.ceil(DUSTV[n.t] * (1 + 0.15 * (G.tier - 1)) * Math.max(0, 1 + m.dustMult) - 1e-9);
+  const dust = Math.ceil(DUSTV[n.t] * (1 + 0.15 * (G.tier - 1)) * Math.max(0, 1 + m.dustMult) * x - 1e-9);
   SAVE.dust += dust; G.dustGot += dust; persist();
   if (m.healWin) G.hp = Math.min(G.maxHp, G.hp + m.healWin);
   C = E = null;
   if (n.t === 'boss') return finishRun(true);
   G.reward = {gold, dust};
   screen = 'reward'; render();
+}
+
+// ================= ประตูลึกลับ: เหตุการณ์สุ่ม =================
+const freeRelics = () => AMUS.filter(a => ![...G.amu, ...G.relics].some(e => e.id === a.id));
+const EVENTS = [
+  {id:'well', w:3, ic:'⛲', t:'บ่อน้ำศักดิ์สิทธิ์', d:'น้ำใสกระจ่างไหลรินกลางห้อง ไอเย็นแผ่คลุมไปทั่ว', ch:() => [
+    {l:'ดื่ม', s:'ฟื้น HP 25%', f:() => { const h = Math.min(Math.round(G.maxHp * .25), G.maxHp - G.hp); G.hp += h; return `ฟื้น HP +${h}`; }},
+    {l:'ชำระกาย', s:'HP สูงสุด +6 (เฉพาะรอบนี้)', f:() => { G.bonusHp += 6; rebuildMods(); return 'HP สูงสุด +6 ตลอดรอบนี้'; }}]},
+  {id:'merchant', w:2, ic:'🧙', t:'พ่อค้าลึกลับ', d:'ชายคลุมผ้าสีเข้มยื่นของมาให้คุณ "ราคาเป็นกันเองจ้ะ"', ch:() => [
+    {l:'ซื้อเครื่องราง', s:'จ่าย 50 ทอง รับเครื่องรางระดับ II (เฉพาะรอบนี้)', ok:() => G.gold >= 50 && freeRelics().length > 0, why:'ทองไม่พอ', f:() => { G.gold -= 50; const a = pick(freeRelics()); G.relics.push({id:a.id, tier:2}); rebuildMods(); return `ได้ ${a.icon} ${a.name} ระดับ II`; }},
+    {l:'ขายเลือด', s:'เสีย HP 10 ได้ทอง +70', ok:() => G.hp > 10, why:'HP ไม่พอ', f:() => { G.hp -= 10; G.gold += 70; return 'เสีย HP 10 ได้ทอง +70'; }},
+    {l:'ปฏิเสธ', s:'เดินจากไป', f:() => 'คุณเดินจากไปมือเปล่า'}]},
+  {id:'altar', w:2, ic:'🩸', t:'แท่นบูชามืด', d:'แท่นหินกระซิบข้างหู "แลกด้วยเลือด จะได้พลังใหม่"', ch:() => [
+    {l:'ถวายเลือด', s:'เสีย HP 8 เปลี่ยนไพ่ต่อสู้ 1 ใบฟรี', ok:() => G.hp > 8, why:'HP ไม่พอ', f:() => { G.evSwap = true; restSwap(); return null; }},
+    {l:'เดินผ่านไป', s:'ไม่เกิดอะไรขึ้น', f:() => 'คุณเดินผ่านแท่นนั้นไป'}]},
+  {id:'chest', w:3, ic:'🎁', t:'หีบติดกับดัก', d:'หีบสมบัติวางอยู่กลางห้อง มีรอยกลไกรอบ ๆ', ch:() => [
+    {l:'เปิดหีบ', s:'50% ได้ผงดาว +25 · 50% เสีย HP 12', f:() => { if (Math.random() < .5) { SAVE.dust += 25; G.dustGot += 25; persist(); return '✨ ได้ผงดาว +25!'; } G.hp = Math.max(1, G.hp - 12); return '💥 กับดักทำงาน เสีย HP 12'; }},
+    {l:'ข้าม', s:'ปลอดภัย', f:() => 'คุณตัดสินใจไม่เสี่ยง'}]},
+  {id:'traveler', w:2, ic:'🧭', t:'นักเดินทางผู้รู้', d:'นักเดินทางแก่ ๆ เสนอสอนเคล็ดลับให้ไพ่ของคุณ 1 ใบ', ch:() => G.arc.minors.map(e => ({l:ARC[e.id].sk, s:`ไพ่ ${ARC[e.id].th} แรงขึ้น 20% ตลอดรอบนี้`, f:() => { G.boost.card[e.id] = (G.boost.card[e.id] || 0) + .2; return `${ARC[e.id].sk} แรงขึ้น 20% ตลอดรอบนี้`; }}))},
+  {id:'shrine', w:2, ic:'⛩', t:'ศาลพรธาตุ', d:'แท่นศักดิ์สิทธิ์สี่ด้าน ให้พรธาตุละหนึ่งอย่าง', ch:() => EL4.map(el => ({l:`${EL[el].ic} ธาตุ${EL[el].th}`, s:`ไพ่ธาตุ${EL[el].th}แรงขึ้น 15% ตลอดรอบนี้`, f:() => { G.boost.el[el] = (G.boost.el[el] || 0) + .15; return `ไพ่ธาตุ${EL[el].th}แรงขึ้น 15% ตลอดรอบนี้`; }}))},
+  {id:'challenge', w:1, ic:'⚔️', t:'ศึกท้าทาย', d:'เงาของศัตรูร้ายขวางทางอยู่ ไม่มีทางเลี่ยง!', ch:() => [
+    {l:'ลุยเลย!', s:'สู้ศัตรูพิเศษ · รางวัลผงดาวและทอง ×2', f:() => { const eid = pick(G.tier >= 2 ? ELITES : ['darkknight']); G.node = {t:'elite', eid, x2:true}; startCombat(eid); return null; }}]},
+];
+function openEvent() {
+  const pool = EVENTS.filter(e => !G.seenEv.includes(e.id)), list = pool.length ? pool : EVENTS;
+  const def = weighted(list.map(e => ({...e, w:e.w})));
+  G.seenEv.push(def.id); if (G.seenEv.length >= EVENTS.length) G.seenEv = [];
+  G.ev = {def, ch:def.ch(), result:null};
+  screen = 'event'; render();
+}
+function evChoose(i) {
+  const c = G.ev.ch[i]; if (!c || G.ev.result) return;
+  if (c.ok && !c.ok()) return toast(c.why || 'เลือกไม่ได้');
+  const r = c.f();
+  if (r === null) return;
+  G.ev.result = r; render();
 }
 
 // ================= ร้านเครื่องราง (เฉพาะรอบนี้) =================
@@ -1647,14 +1737,17 @@ function restSwap() {                                      // เปลี่ย
   openModal(`<h2>🔄 เปลี่ยนไพ่ต่อสู้ 1 ใบ</h2><div class="muted">เลือกช่องที่จะเปลี่ยน (ทำได้ 1 ครั้ง · มีผลเฉพาะรอบนี้)</div>
     ${G.arc.minors.map((e, i) => { const A = ARC[e.id]; return `<button class="arow" style="--ec:${EL[A.el].c}" onclick="swapPick(${i})"><span class="ai">${ROLE[A.role].ic}</span><span>
       <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost}${e.rev ? ' · 🔻' : ''}</small><br>${kitDesc(A, e.rev, minorMult(G.arc.major, e))}</span></button>`; }).join('')}
-    <button class="btn sec close" onclick="closeModal()">ยกเลิก</button>`);
+    <button class="btn sec close" onclick="G.evSwap=false;closeModal()">ยกเลิก</button>`);
 }
 function swapPick(i) {
   const cur = G.arc.minors.map(e => e.id).filter((_, j) => j !== i);
   openModal(`<h2>🔄 เปลี่ยนเป็นไพ่ใบไหน?</h2>${kitOptions(G.arc.major, (id, rev) => `swapDo(${i}, '${id}', ${rev})`, cur)}
     <button class="btn sec close" onclick="restSwap()">กลับ</button>`);
 }
-function swapDo(i, id, rev) { G.arc.minors[i] = {id, rev, form:1}; closeModal(); rebuildMods(); nextFloor(); }
+function swapDo(i, id, rev) {
+  if (G.evSwap) { G.evSwap = false; G.hp = Math.max(1, G.hp - 8); }
+  G.arc.minors[i] = {id, rev, form:1}; closeModal(); rebuildMods(); nextFloor();
+}
 
 // ================= โมดัล =================
 function openModal(html) { closeModal(); const m = document.createElement('div'); m.className = 'modal'; m.id = 'modal'; m.innerHTML = html; app.appendChild(m); }
@@ -1676,6 +1769,85 @@ function arcRow(A) {
     ${A.d(A.v)}<br><small>${peText(A)}</small><br><small class="bad">🔻 กลับหัว: ${A.d(A.rv)} · ⚠ ${badOf(A).d}</small><br>
     <small>🌟 ท่าไม้ตาย: <b>${ULTS[A.el].name}</b> — ${ULTS[A.el].d(ULT2.has(A.id) ? 0.8 : 1)}<br>${ultInfo(A)}</small></span></div>`;
 }
+// ================= ภารกิจ · เข้าเล่นต่อเนื่อง · ความสำเร็จ (เก็บในเครื่อง · ใช้เวลาของเครื่อง) =================
+const pad2 = n => String(n).padStart(2, '0');
+const dayKey = (t = Date.now() + TIME_OFFSET) => { const d = new Date(t); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const weekKey = (t = Date.now() + TIME_OFFSET) => { const d = new Date(t); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return dayKey(d.getTime()); };
+function seeded(seed) { let h = 2166136261; for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return () => { h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0; return (h % 100000) / 100000; }; }
+const SUIT_QN = {wands:'ไม้เท้า', cups:'ถ้วย', swords:'ดาบ', pentacles:'เหรียญ'};
+const DQ = [{k:'combat', n:3, t:'ชนะการต่อสู้ 3 ครั้ง'}, {k:'perfect', n:10, t:'ปัดสมบูรณ์ 10 ครั้ง'}, {k:'break', n:3, t:'ทำให้ศัตรูมึน 3 ครั้ง'}, {k:'ult', n:2, t:'ใช้ท่าไม้ตาย 2 ครั้ง'},
+  {k:'react', n:5, t:'เกิดปฏิกิริยาตราธาตุ 5 ครั้ง'}, {k:'clear', n:1, t:'ผ่านชั้นหอคอย 1 ครั้ง'}, ...Object.keys(SUIT_QN).map(su => ({k:'suit_' + su, n:15, t:`ใช้ไพ่ชุด${SUIT_QN[su]} 15 ใบ`}))];
+const WQ = [{k:'perfect', n:60, t:'ปัดสมบูรณ์ 60 ครั้ง'}, {k:'combat', n:20, t:'ชนะการต่อสู้ 20 ครั้ง'}, {k:'clear', n:3, t:'ผ่านชั้นหอคอย 3 ครั้ง'}, {k:'react', n:25, t:'เกิดปฏิกิริยาตราธาตุ 25 ครั้ง'}, {k:'break', n:15, t:'ทำให้ศัตรูมึน 15 ครั้ง'}, {k:'ult', n:10, t:'ใช้ท่าไม้ตาย 10 ครั้ง'}];
+const DREW = [{gems:20}, {dust:15}, {coins:40}, {tickets:1}], WREW = [{gems:100}, {dust:60}, {tickets:2}];
+const STREAK = [{gems:10}, {dust:10}, {coins:30}, {gems:20}, {dust:20}, {tickets:1}, {tickets:2, gems:30}];
+const rewText = r => [r.gems && `💎 ${r.gems}`, r.dust && `✨ ${r.dust}`, r.coins && `🪙 ${r.coins}`, r.tickets && `🎫 ${r.tickets}`].filter(Boolean).join(' ');
+function grantReward(r) {
+  if (r.gems) SAVE.gems += r.gems; if (r.dust) SAVE.dust += r.dust; if (r.coins) SAVE.amu.coins += r.coins; if (r.tickets) SAVE.tickets += r.tickets;
+  persist(); toast(`🎁 รับ ${rewText(r)}`, 'info');
+}
+function rollQuests(pool, n, rews, seed) {
+  const rnd = seeded(seed), idx = pool.map((_, i) => i);
+  const picked = []; while (picked.length < n) picked.push(idx.splice(Math.floor(rnd() * idx.length), 1)[0]);
+  return picked.map((i, k) => ({...pool[i], have:0, claimed:false, r:rews[Math.floor(rnd() * rews.length)]}));
+}
+function ensureQuests() {
+  const today = dayKey(), wk = weekKey();
+  if (!SAVE.q) SAVE.q = {day:'', week:'', daily:[], weekly:[], bonus:false, streak:{last:'', n:0, claimed:''}, ach:{}};
+  const q = SAVE.q;
+  if (q.day !== today) {
+    const y = dayKey(Date.now() + TIME_OFFSET - 86400000);
+    q.streak.n = q.streak.last === y ? q.streak.n + 1 : 1; q.streak.last = today;
+    q.day = today; q.daily = rollQuests(DQ, 3, DREW, 'd' + today); q.bonus = false;
+  }
+  if (q.week !== wk) { q.week = wk; q.weekly = rollQuests(WQ, 3, WREW, 'w' + wk).map(x => ({...x, r:WREW[Math.floor(seeded('r' + wk + x.k)() * WREW.length)]})); }
+  return q;
+}
+function track(k, n = 1) {
+  const q = ensureQuests();
+  [...q.daily, ...q.weekly].forEach(x => { if (x.k === k && !x.claimed && x.have < x.n) { x.have = Math.min(x.n, x.have + n); if (x.have >= x.n) toast(`📋 ภารกิจสำเร็จ: ${x.t}<br><small>ไปรับรางวัลที่หน้าแรก → ภารกิจ</small>`, 'info'); } });
+  persist();
+}
+function claimQuest(kind, i) {
+  const q = ensureQuests(), x = (kind === 'd' ? q.daily : q.weekly)[i];
+  if (!x || x.claimed || x.have < x.n) return;
+  x.claimed = true; grantReward(x.r); render();
+}
+function claimBonus() { const q = ensureQuests(); if (q.bonus || !q.daily.every(x => x.claimed)) return; q.bonus = true; grantReward({tickets:1}); render(); }
+function claimStreak() { const q = ensureQuests(); if (q.streak.claimed === q.day) return; q.streak.claimed = q.day; grantReward(STREAK[(q.streak.n - 1) % 7]); render(); }
+const ownedMajors = () => MAJORS.filter(M => SAVE.owned[M.id]);
+const ACH = [
+  {id:'run1', t:'ก้าวแรก', d:'ชนะรอบหอคอยครั้งแรก', c:() => ST().wins >= 1, g:20},
+  {id:'t1', t:'ผ่านชั้น 1', d:'ชนะบอสชั้น 1', c:() => SAVE.tower.cleared >= 1, g:20},
+  {id:'t3', t:'ผ่านชั้น 3', d:'ผ่านถึงชั้น 3', c:() => SAVE.tower.cleared >= 3, g:30},
+  {id:'t5', t:'ผ่านชั้น 5', d:'ผ่านถึงชั้น 5', c:() => SAVE.tower.cleared >= 5, g:50},
+  {id:'t10', t:'ยอดหอคอย', d:'ผ่านครบ 10 ชั้น', c:() => SAVE.tower.cleared >= 10, g:100},
+  {id:'cb10', t:'นักสู้', d:'ชนะการต่อสู้ 10 ครั้ง', c:() => ST().combats >= 10, g:20},
+  {id:'cb50', t:'นักรบ', d:'ชนะการต่อสู้ 50 ครั้ง', c:() => ST().combats >= 50, g:40},
+  {id:'cb200', t:'ผู้พิชิต', d:'ชนะการต่อสู้ 200 ครั้ง', c:() => ST().combats >= 200, g:80},
+  {id:'pf100', t:'จังหวะดี', d:'ปัดสมบูรณ์ 100 ครั้ง', c:() => ST().parry.perfect >= 100, g:30},
+  {id:'pf500', t:'ปรมาจารย์การปัด', d:'ปัดสมบูรณ์ 500 ครั้ง', c:() => ST().parry.perfect >= 500, g:80},
+  {id:'ult10', t:'พลังพิเศษ', d:'ใช้ท่าไม้ตาย 10 ครั้ง', c:() => ST().ults >= 10, g:20},
+  {id:'brk25', t:'ทำลายสมดุล', d:'ทำให้ศัตรูมึน 25 ครั้ง', c:() => ST().breaks >= 25, g:20},
+  {id:'rx25', t:'นักเล่นแร่', d:'เกิดปฏิกิริยาตราธาตุ 25 ครั้ง', c:() => ST().reacts >= 25, g:20},
+  {id:'rx100', t:'ปรมาจารย์ธาตุ', d:'เกิดปฏิกิริยาตราธาตุ 100 ครั้ง', c:() => ST().reacts >= 100, g:50},
+  {id:'boss4', t:'นักล่าบอส', d:'ชนะบอสครบทั้ง 4 ตัว', c:() => Object.keys(ST().bosses || {}).length >= 4, g:80},
+  {id:'maj4', t:'ครบสี่ธาตุ', d:'มี Major ครบทั้ง ไฟ น้ำ ลม ดิน', c:() => EL4.every(el => ownedMajors().some(M => M.el === el)), g:30},
+  {id:'ld', t:'แสงและเงา', d:'มี Major ธาตุแสงและมืดอย่างละ 1 ใบ', c:() => ['light', 'dark'].every(el => ownedMajors().some(M => M.el === el)), g:40},
+  {id:'maj10', t:'นักสะสม Major', d:'มี Major 10 ใบ', c:() => ownedMajors().length >= 10, g:50},
+  {id:'cards40', t:'นักสะสมไพ่', d:'มีไพ่ 40 ใบ (ไม่ซ้ำ)', c:() => Object.keys(SAVE.owned).length >= 40, g:50},
+  {id:'dup7', t:'ชำนาญสุดขีด', d:'มีไพ่ใบใดใบหนึ่งครบ 7 ใบ', c:() => Object.values(SAVE.owned).some(n => n >= 7), g:40},
+  {id:'lv10', t:'เลเวล 10', d:'ตัวละครถึงเลเวล 10', c:() => SAVE.hero.level >= 10, g:30},
+  {id:'lv20', t:'เลเวล 20', d:'ตัวละครถึงเลเวล 20', c:() => SAVE.hero.level >= 20, g:60},
+];
+const achDone = a => !!ensureQuests().ach[a.id];
+function claimAch(id) { const a = ACH.find(x => x.id === id); if (!a || achDone(a) || !a.c()) return; ensureQuests().ach[id] = true; grantReward({gems:a.g}); render(); }
+function claimableCount() {
+  const q = ensureQuests();
+  return [...q.daily, ...q.weekly].filter(x => !x.claimed && x.have >= x.n).length + (q.streak.claimed !== q.day ? 1 : 0)
+    + (!q.bonus && q.daily.every(x => x.claimed) ? 1 : 0) + ACH.filter(a => !achDone(a) && a.c()).length;
+}
+let QT = 'q';                                                    // แท็บหน้าภารกิจ: q = ภารกิจ · a = ความสำเร็จ
+
 // ================= ตั้งค่า · สถิติ · สำรอง/นำเข้าเซฟ =================
 const pc = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
 const dstr = t => { try { return new Date(t).toLocaleDateString('th-TH', {year:'numeric', month:'short', day:'numeric'}); } catch (e) { return '-'; } };
@@ -1790,11 +1962,23 @@ function showGuide() {
 
     <h3>🚪 ประตู</h3>
     <ul><li>ด่าน 1: เลือกประตูต่อสู้ 1 จาก 3 บาน (ศัตรูต่างกัน)</li>
-    <li>ด่าน 2–3: เลือก 1 จาก 3 บาน (⚔️ ต่อสู้ · ☠️ ศัตรูพิเศษ · 🛒 ร้านเครื่องราง · 🔥 กองไฟ) แต่ละชุดมีประตูต่อสู้อย่างน้อย 1 บาน</li>
+    <li>ด่าน 2–3: เลือก 1 จาก 3 บาน (⚔️ ต่อสู้ · ☠️ ศัตรูพิเศษ · 🛒 ร้านเครื่องราง · 🔥 กองไฟ · 🎲 ลึกลับ) แต่ละชุดมีประตูต่อสู้อย่างน้อย 1 บาน</li>
     <li>ด่าน 4: บอสประจำชั้น (ไม่ต้องเลือก)</li>
     <li>ศัตรูพิเศษยากกว่า แต่ได้ผงดาวและทองมากกว่า รวมทั้ง EXP</li>
     <li>เลือกให้สมดุลระหว่าง "เสริมพลัง" กับ "รักษา HP" เช่น เจอกองไฟก่อนบอสเป็นประตูที่ดี</li>
     <li>ชั้น 1: ด่าน 3 (ก่อนบอส) <b>มีประตูกองไฟทุกครั้ง</b> ชั้นที่สูงกว่านั้นขึ้นกับโชค</li></ul>
+
+    <h3>🎲 ประตูลึกลับ</h3>
+    <ul><li>เจอเหตุการณ์สุ่มให้เลือก (มีทางปลอดภัยเสมอ ยกเว้น <b>ศึกท้าทาย</b> ที่หลบไม่ได้แต่รางวัล ×2): บ่อน้ำศักดิ์สิทธิ์ · พ่อค้าลึกลับ · แท่นบูชามืด · หีบติดกับดัก · นักเดินทางผู้รู้ (ไพ่ 1 ใบแรงขึ้น 20%) · ศาลพรธาตุ (ธาตุหนึ่งแรงขึ้น 15%)</li>
+    <li>ผลของเหตุการณ์อยู่ตลอดรอบนั้นเท่านั้น</li></ul>
+
+    <h3>👾 ศัตรูและลักษณะเฉพาะ</h3>
+    <ul><li>ชั้น 2 ขึ้นไปพบศัตรูใหม่หลายชนิด แต่ละตัวมีลักษณะต่างกัน (แตะป้ายใต้ชื่อศัตรูเพื่อดูคำอธิบาย): 🩸 ดูดเลือด · 🌵 หนาม (ใช้ไพ่โจมตีโดนสวน) · 🛡 โล่หนา · 💚 ฟื้นตัว (หยุดเมื่อมึน) · 😡 คลั่ง (HP ครึ่งหนึ่ง ตีแรงขึ้น) · 🔮 โล่วิญญาณ (ดูดซับดาเมจก้อนแรกของเทิร์น) · 🕸 ใย (ไพ่ใบแรกของเทิร์นถัดไปเสีย +1⚡)</li>
+    <li>บอสหมุนตามชั้น: 🐉 มังกร · 👹 ราชาโทรลล์ · 🕷️ ราชินีแมงมุม · ☠️ ลิช ต่างกันทั้งท่า จังหวะปัด และกลไก</li></ul>
+
+    <h3>📋 ภารกิจและความสำเร็จ</h3>
+    <ul><li>หน้าแรก → <b>📋 ภารกิจ</b>: เข้าเล่นต่อเนื่อง 7 วัน · ภารกิจรายวัน 3 ข้อ (ครบแล้วโบนัสตั๋ว) · ภารกิจรายสัปดาห์ 3 ข้อ · <b>🏅 ความสำเร็จ</b> ได้เพชรครั้งเดียวต่อรายการ</li>
+    <li>เก็บในเครื่องและใช้เวลาของเครื่อง</li></ul>
 
     <h3>🧙 เลเวลและสถานะ</h3>
     <ul><li>ผ่านด่านได้ <b>EXP</b> (ต่อสู้ 10 · ศัตรูพิเศษ 25 · บอส 50 · ชั้นสูงได้เพิ่ม) แพ้ก็ยังได้ EXP จากด่านที่ผ่านมาแล้ว</li>
@@ -1922,6 +2106,8 @@ function doorHTML(d, i) {
     const extra = t === 'elite' ? '<br>ผงดาว + ทอง มากกว่าปกติ' : t === 'boss' ? '<br>ชนะเพื่อปลดล็อกชั้นถัดไป' : '<br>ได้ผงดาว + ทอง';
     body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${enemyName(e, elOf(e, G.tier))}</b><small>HP ~${hp} · ⭐ +${exp} EXP · ${EL[elOf(e, G.tier)].ic} ธาตุ${EL[elOf(e, G.tier)].th} · 🎯 อ่อนต่อ ${EL[wkOf(e, G.tier)].ic}${(() => { const M = ARC[G.arc.major.id].el, el = elOf(e, G.tier), a = BEATS[M] === el, b = BEATS[el] === M; return a && b ? '' : a ? ' · ✅ Major ชนะธาตุนี้' : b ? ' · ⚠ Major แพ้ธาตุนี้' : ''; })()}${extra}</small></span>`;
   } else if (t === 'shop') body = `<span class="dart">🛒</span><span class="dinfo"><b>ร้านเครื่องราง</b><small>ซื้อเครื่องรางชั่วคราว (เฉพาะรอบนี้) · ยาฟื้น HP</small></span>`;
+  else if (t === 'mystery') body = `<span class="dart">🎲</span><span class="dinfo"><b>ประตูลึกลับ</b><small>เหตุการณ์สุ่ม · มีทางเลือกเสี่ยง/ปลอดภัย</small></span>`;
+  else if (t === 'mystery') body = `<span class="dart">🎲</span><span class="dinfo"><b>ประตูลึกลับ</b><small>เหตุการณ์สุ่ม · มีทางเลือกเสี่ยง/ปลอดภัย</small></span>`;
   else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(REST.frac * G.mods.restMult)} หรือเปลี่ยนไพ่ต่อสู้ 1 ใบ</small></span>`;
   return `<button class="door ${t}" onclick="chooseDoor(${i})">${body}<span class="dgo">▶</span></button>`;
 }
@@ -2011,6 +2197,8 @@ const SCREENS = {
       ${tile('💍', 'เครื่องราง', "amuBack='title';screen='amulets';render()", SAVE.amu.equip.filter(Boolean).length + '/2')}
       ${tile('🔨', 'ร้านช่างตี', "screen='forge';render()")}
       ${tile('📖', 'ไพ่ต่อสู้', 'showKitGallery()')}
+      ${tile('📋', 'ภารกิจ', "QT='q';screen='quests';render()", claimableCount() || '')}
+      ${tile('🏅', 'ความสำเร็จ', "QT='a';screen='quests';render()")}
     </div>
     <div class="menurow">
       <button class="btn sec" onclick="toggleParry()">🎯 ปัดจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
@@ -2139,6 +2327,24 @@ const SCREENS = {
     <button class="link-btn" onclick="devUnlockTiers()">🧪 ทดสอบ: ปลดล็อกทุกชั้น</button>
   </div>`; },
 
+  quests: () => {
+    const q = ensureQuests(), today = q.streak.claimed === q.day, bar = x => `<div class="expbar" style="margin:3px 0"><i style="width:${x.have / x.n * 100}%"></i><span>${x.have}/${x.n}</span></div>`;
+    const qrow = (x, k, i) => `<div class="amu"><div class="ainfo"><b>${x.t}</b><small>รางวัล ${rewText(x.r)}</small>${bar(x)}</div>
+      <button class="btn" style="padding:7px 12px;font-size:13px" onclick="claimQuest('${k}',${i})" ${x.claimed || x.have < x.n ? 'disabled' : ''}>${x.claimed ? '✅' : x.have >= x.n ? '🎁 รับ' : '⏳'}</button></div>`;
+    const tabs = `<div class="menurow"><button class="btn ${QT === 'q' ? '' : 'sec'}" onclick="QT='q';render()">📋 ภารกิจ</button><button class="btn ${QT === 'a' ? '' : 'sec'}" onclick="QT='a';render()">🏅 ความสำเร็จ</button></div>`;
+    const body = QT === 'q' ? `
+      <div class="sect">📅 เข้าเล่นต่อเนื่อง · วันที่ ${q.streak.n}</div>
+      <div class="menurow" style="flex-wrap:wrap">${STREAK.map((r, i) => `<div class="pill" style="flex:1;min-width:46px;text-align:center;${(q.streak.n - 1) % 7 === i ? 'border:1px solid #ffd25a;background:rgba(255,210,90,.18)' : ''}">${i + 1}<br><small>${rewText(r)}</small></div>`).join('')}</div>
+      <button class="btn" style="width:100%" onclick="claimStreak()" ${today ? 'disabled' : ''}>${today ? '✅ รับรางวัลวันนี้แล้ว' : `🎁 รับรางวัลวันที่ ${(q.streak.n - 1) % 7 + 1}: ${rewText(STREAK[(q.streak.n - 1) % 7])}`}</button>
+      <div class="sect">☀️ ภารกิจรายวัน</div>${q.daily.map((x, i) => qrow(x, 'd', i)).join('')}
+      <button class="btn sec" style="width:100%" onclick="claimBonus()" ${q.bonus || !q.daily.every(x => x.claimed) ? 'disabled' : ''}>${q.bonus ? '✅ รับโบนัสแล้ว' : '🎁 ทำครบทั้ง 3 ข้อ: โบนัส 🎫 1'}</button>
+      <div class="sect">🗓 ภารกิจรายสัปดาห์</div>${q.weekly.map((x, i) => qrow(x, 'w', i)).join('')}
+      <div class="muted">ภารกิจใช้เวลาของเครื่องคุณ รีเซ็ตรายวันตอนเที่ยงคืน รายสัปดาห์ตอนเที่ยงคืนวันอาทิตย์</div>`
+      : ACH.map(a => { const ok = a.c(), done = achDone(a); return `<div class="amu" style="${done ? 'opacity:.6' : ''}"><div class="ainfo"><b>${done ? '✅' : ok ? '🎁' : '🔒'} ${a.t}</b><small>${a.d} · 💎 ${a.g}</small></div>
+        <button class="btn" style="padding:7px 12px;font-size:13px" onclick="claimAch('${a.id}')" ${done || !ok ? 'disabled' : ''}>${done ? 'รับแล้ว' : ok ? 'รับ' : '—'}</button></div>`; }).join('');
+    return `<div class="screen"><h2>📋 ภารกิจ</h2>${walletHTML()}${tabs}${body}<div class="startbar"><button class="btn sec" onclick="screen='title';render()">กลับ</button></div></div>`;
+  },
+
   hero: () => {
     const h = SAVE.hero, need = h.level >= LV_MAX ? 0 : expNeed(h.level), em = equippedMajor(), A = ARC[em.id];
     const showM = {id:em.id, rev:em.rev, form:canAlt(em.id) && SAVE.form[em.id] === 2 ? 2 : 1};
@@ -2197,6 +2403,8 @@ const SCREENS = {
         ${C.stains.length === 2 ? (C.stains[0] === C.stains[1] ? `<span class="rx">✨ ไพ่ธาตุนี้ใบถัดไป +25%</span>` : (R => `<span class="rx">${R.ic} ${R.n}: ${R.d} (ใช้ไพ่ใบถัดไป)</span>`)(REACT[reactKey(C.stains[0], C.stains[1])])) : ''}</div>
       <div class="statuses">
         <span class="st wk" onclick="event.stopPropagation();showElements()">${EL[E.el].ic} ธาตุ${EL[E.el].th} · 🎯 อ่อนต่อ ${EL[E.wk].ic} ×${WEAK_K}${E.res ? ` · ⬇ ทน ${EL[E.res].ic} ×${RES_K}` : ''} ❔</span>
+        ${E.tr.map(t => `<span class="st tr" onclick="event.stopPropagation();toast('${TRAIT[t][1]}','info')">${TRAIT[t][0]}</span>`).join('')}
+        ${E.ward > 0 ? `<span class="st blk">🔮 โล่วิญญาณ ${E.ward}</span>` : ''}
         ${E.block ? `<span class="st blk">🛡 ${E.block}</span>` : ''}
         ${E.str ? `<span class="st">💪 พลัง ${E.str}</span>` : ''}
         ${E.vuln ? `<span class="st">🎯 เปราะบาง ${E.vuln}</span>` : ''}
@@ -2218,6 +2426,7 @@ const SCREENS = {
           ${C.thorns ? `<span class="st">⛓️ หนาม ${C.thorns}</span>` : ''}
           ${C.reflectT ? `<span class="st">⛓️ สะท้อน ${C.reflectT} เทิร์นนี้</span>` : ''}
           ${C.guard ? `<span class="st blk">🛡 ตั้งรับ (ดาเมจ −50%)</span>` : ''}
+          ${C.web ? `<span class="st">🕸 ไพ่ใบแรก +1⚡</span>` : ''}
         </div>
       </div>
     </div>
@@ -2236,6 +2445,13 @@ const SCREENS = {
     <div class="box" style="text-align:center;font-size:17px">✨ ผงดาว <b style="color:#c9b6ff">+${G.reward.dust}</b><br>💰 ทอง <b style="color:#ffd25a">+${G.reward.gold}</b></div>
     <div class="muted">ผงดาวใช้สร้างไพ่ในสมุดไพ่ (เก็บไว้ถาวร แม้แพ้ในรอบนี้)<br>ผงดาวรวมรอบนี้ ${G.dustGot}</div>
     <button class="btn" onclick="nextFloor()">ไปต่อ ▶</button></div>`,
+
+  event: () => { const ev = G.ev, d = ev.def; return `${topbar()}<div class="screen" style="justify-content:center">
+    <div style="font-size:64px">${d.ic}</div><h2>${d.t}</h2>
+    <div class="muted" style="font-size:14px">${d.d}</div>
+    ${ev.result ? `<div class="box" style="text-align:center;font-size:16px">${ev.result}</div><button class="btn" onclick="nextFloor()">ไปต่อ ▶</button>`
+      : `<div class="choice">${ev.ch.map((c, i) => { const bad = c.ok && !c.ok(); return `<button class="btn sec" ${bad ? 'style="opacity:.45"' : ''} onclick="evChoose(${i})"><b>${c.l}</b><br><small style="font-weight:400">${c.s}${bad ? ' · ⛔ ' + c.why : ''}</small></button>`; }).join('')}</div>`}
+  </div>`; },
 
   shop: () => `${topbar()}<div class="screen">
     <h2>🛒 ร้านเครื่องราง</h2>
