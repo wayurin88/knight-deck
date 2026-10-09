@@ -300,6 +300,8 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 .enemy-zone.sc-water{--sc1:#12365a;--sc2:#0a1424;--gl:#5ab0ff}
 .enemy-zone.sc-air{--sc1:#3a4a66;--sc2:#141a28;--gl:#cfe8ff}
 .enemy-zone.sc-earth{--sc1:#27481f;--sc2:#0d170c;--gl:#86d17a}
+.enemy-zone.sc-light{--sc1:#6a5a1a;--sc2:#1d170a;--gl:#ffe27a}
+.enemy-zone.sc-dark{--sc1:#2d1a52;--sc2:#0c0716;--gl:#b08cff}
 .enemy-zone>*{position:relative;z-index:1}
 .scene-fx{position:absolute!important;inset:0;z-index:0!important;pointer-events:none;opacity:.55;background:
  radial-gradient(2px 2px at 20% 80%,var(--gl),transparent),radial-gradient(2px 2px at 70% 70%,var(--gl),transparent),radial-gradient(1.5px 1.5px at 45% 90%,var(--gl),transparent),
@@ -445,7 +447,10 @@ const EL = {
   water: {th:'น้ำ', c:'#5ab0ff', ic:'💧'},
   air:   {th:'ลม', c:'#cfe8ff', ic:'🌪️'},
   earth: {th:'ดิน', c:'#86d17a', ic:'🌿'},
+  light: {th:'แสง', c:'#ffe27a', ic:'✨'},
+  dark:  {th:'มืด', c:'#a07cf0', ic:'🌑'},
 };
+const EL4 = ['fire', 'water', 'air', 'earth'];                    // ธาตุของชุดไพ่ Minor (แสง/มืดเป็นธาตุของ Major ศัตรู ท่าไม้ตาย และตราธาตุ)
 // ข้อเสียเมื่อไพ่ออกมา "กลับหัว"
 const BAD = {
   hp:     {d:'HP สูงสุด −8', f:m=>m.maxHp-=8},
@@ -483,14 +488,14 @@ const MAJORS = [
   {no:'X',    en:'Wheel of Fortune',  th:'กงล้อแห่งโชคชะตา', el:'earth', icon:'🎡', v:20,  rv:40,  bad:'shop',   d:v=>`ผงดาวจากรางวัล +${v}% · ทองจากการต่อสู้ +30% · เริ่มรอบได้ทอง +40 · ฟื้น HP 3 หลังชนะ · เริ่มการต่อสู้เกราะ 6`, f:(m,v)=>{m.dustMult+=v/100; m.goldMult+=.3; m.goldStart+=40; m.healWin+=3; m.startBlock+=6;}},
   {no:'XI',   en:'Justice',           th:'ความยุติธรรม',   el:'air',   icon:'⚖️', v:.2,  rv:.35, bad:'estr',   d:v=>`ถูกโจมตี สะท้อนดาเมจกลับ ${pct(v)}`, f:(m,v)=>m.reflect+=v},
   {no:'XII',  en:'The Hanged Man',    th:'คนแขวน',        el:'water', icon:'🙃', v:1,   rv:2,   bad:'d1',     d:v=>`ไพ่ใบแรกของ <b>เทิร์นคู่</b> ลดค่าพลังงาน ${v}`, f:(m,v)=>m.evenFirstDisc+=v},
-  {no:'XIII', en:'Death',             th:'ความตาย',       el:'fire',  icon:'💀', v:25,  rv:40,  bad:'hp',     d:v=>`ชนะการต่อสู้ได้ทอง +${v} · ดาเมจ +10%`, f:(m,v)=>{m.killGold+=v; m.dmgPct+=.1;}},
+  {no:'XIII', en:'Death',             th:'ความตาย',       el:'dark',  icon:'💀', v:25,  rv:40,  bad:'hp',     d:v=>`ชนะการต่อสู้ได้ทอง +${v} · ดาเมจ +10%`, f:(m,v)=>{m.killGold+=v; m.dmgPct+=.1;}},
   {no:'XIV',  en:'Temperance',        th:'ความพอดี',      el:'water', icon:'⚗️', v:20,  rv:16,  bad:'dmg',    d:v=>`ไม่รับดาเมจเกิน ${v} ต่อการโจมตีหนึ่งครั้ง · เกราะ +15%`, f:(m,v)=>{m.dmgCap=m.dmgCap?Math.min(m.dmgCap,v):v; m.blockPct+=.15;}},
-  {no:'XV',   en:'The Devil',         th:'ปีศาจ',         el:'fire',  icon:'😈', v:.4,  rv:.6,  bad:'drain',  d:v=>`ดาเมจ +${pct(v)} · เสีย HP 2 ทุกเทิร์น`, f:(m,v)=>{m.dmgPct+=v; m.drain+=2;}},
+  {no:'XV',   en:'The Devil',         th:'ปีศาจ',         el:'dark',  icon:'😈', v:.4,  rv:.6,  bad:'drain',  d:v=>`ดาเมจ +${pct(v)} · เสีย HP 2 ทุกเทิร์น`, f:(m,v)=>{m.dmgPct+=v; m.drain+=2;}},
   {no:'XVI',  en:'The Tower',         th:'หอคอย',         el:'fire',  icon:'🗼', v:12,  rv:20,  bad:'blk',    d:v=>`เริ่มการต่อสู้ ศัตรูโดนดาเมจ ${v}`, f:(m,v)=>m.startEnemyDmg+=v},
-  {no:'XVII', en:'The Star',          th:'ดวงดาว',        el:'air',   icon:'⭐', v:15,  rv:25,  bad:'ehp',    d:v=>`HP ต่ำกว่า 30% ครั้งแรกของการต่อสู้: ฟื้น ${v}`, f:(m,v)=>m.starHeal+=v},
-  {no:'XVIII',en:'The Moon',          th:'ดวงจันทร์',      el:'water', icon:'🌕', v:2,   rv:3,   bad:'d1',     d:v=>`ศัตรูเริ่มการต่อสู้ด้วยอ่อนแรง ${v}`, f:(m,v)=>m.startEnemyWeak+=v},
-  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'fire',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 6 เทิร์น เกจเต็ม และชาร์จพลังพิเศษ +${v * 3}`, f:(m,v)=>{m.sunFull=true; m.sunCharge+=v * 3;}},
-  {no:'XX',   en:'Judgement',         th:'การพิพากษา',     el:'air',   icon:'📯', v:.3,  rv:.5,  bad:'estr',   d:v=>`ตายครั้งแรกในรอบ: ฟื้นคืนด้วย HP ${pct(v)}`, f:(m,v)=>m.revive=Math.max(m.revive,v)},
+  {no:'XVII', en:'The Star',          th:'ดวงดาว',        el:'light',   icon:'⭐', v:15,  rv:25,  bad:'ehp',    d:v=>`HP ต่ำกว่า 30% ครั้งแรกของการต่อสู้: ฟื้น ${v}`, f:(m,v)=>m.starHeal+=v},
+  {no:'XVIII',en:'The Moon',          th:'ดวงจันทร์',      el:'dark', icon:'🌕', v:2,   rv:3,   bad:'d1',     d:v=>`ศัตรูเริ่มการต่อสู้ด้วยอ่อนแรง ${v}`, f:(m,v)=>m.startEnemyWeak+=v},
+  {no:'XIX',  en:'The Sun',           th:'ดวงอาทิตย์',     el:'light',  icon:'☀️', v:1,   rv:2,   bad:'hp',     d:v=>`ทุก 6 เทิร์น เกจเต็ม และชาร์จพลังพิเศษ +${v * 3}`, f:(m,v)=>{m.sunFull=true; m.sunCharge+=v * 3;}},
+  {no:'XX',   en:'Judgement',         th:'การพิพากษา',     el:'light',   icon:'📯', v:.3,  rv:.5,  bad:'estr',   d:v=>`ตายครั้งแรกในรอบ: ฟื้นคืนด้วย HP ${pct(v)}`, f:(m,v)=>m.revive=Math.max(m.revive,v)},
   {no:'XXI',  en:'The World',         th:'โลก',           el:'earth', icon:'🌍', v:.4, rv:.6,  bad:'ehp',    d:v=>`ผลของไพ่ Minor ทั้ง 4 ใบ ×${1+v}`, f:()=>{}},
 ].map((M, i) => ({...M, id:'M' + i, major:true}));
 const WORLD = 'M21';
@@ -619,10 +624,14 @@ function arcValue(A, rev, mult = 1) {
   return Number.isInteger(A.v) ? Math.ceil(x - 1e-9) : Math.round(x * 100) / 100;
 }
 // ตัวคูณของ Minor: The World ×1.5 / ธาตุตรงกับ Major ×1.25
+// ธาตุที่ Major "ส่งเสริม" ไพ่ Minor: ผล ×1.15 (ธาตุเดียวกัน ×1.25)
+const SUPPORT = {fire:['air'], air:['fire'], water:['earth'], earth:['water'], light:['fire', 'earth'], dark:['water', 'air']};
+const supports = (majorEl, minorEl) => (SUPPORT[majorEl] || []).includes(minorEl);
 function minorMult(major, e) {
   if (!major) return 1;
   let k = major.id === WORLD ? 1 + arcValue(ARC[WORLD], major.rev) : 1;
-  if (ARC[e.id].el === ARC[major.id].el) k *= 1.25;
+  const me = ARC[major.id].el, ne = ARC[e.id].el;
+  if (ne === me) k *= 1.25; else if (supports(me, ne)) k *= 1.15;
   return k;
 }
 function buildMods(arc, equip = [], stats = null) {
@@ -676,18 +685,19 @@ const AMU = Object.fromEntries(AMUS.map(a => [a.id, a]));
 const amuText = (id, t) => AMU[id].d(AMU[id].t[t - 1]);
 
 // ================= ศัตรู =================
-const ELKEYS = ['fire', 'water', 'air', 'earth'];                // จุดอ่อนของศัตรู: หมุนตามชั้น (ชั้นถัดไปอ่อนต่อธาตุถัดไป)
-// วงจรธาตุ: น้ำ > ไฟ > ดิน > ลม > น้ำ (ซ้ายชนะขวา)
-const BEATS = {water:'fire', fire:'earth', earth:'air', air:'water'};
+const ELKEYS = ['fire', 'water', 'air', 'earth', 'light', 'dark'];        // ธาตุศัตรู: หมุนตามชั้น (ชั้น 1–2 มีเฉพาะ 4 ธาตุแรก · ชั้น 3 ขึ้นไป เพิ่มแสง/มืด)
+// วงจรธาตุ: น้ำ > ไฟ > ดิน > ลม > น้ำ · แสง ↔ มืด ชนะซึ่งกันและกัน (กับสี่ธาตุเดิมเป็นกลาง)
+const BEATS = {water:'fire', fire:'earth', earth:'air', air:'water', light:'dark', dark:'light'};
 const BEATEN_BY = Object.fromEntries(Object.entries(BEATS).map(([a, b]) => [b, a]));
 const WEAK_K = 1.5, RES_K = 0.75, STUN_K = 1.3, BASIC_DMG = 4;     // ธาตุที่ชนะศัตรู ×1.5 · ธาตุที่แพ้ ×0.75 · ศัตรูมึนรับดาเมจ ×1.3
-const elOf = (d, t) => ELKEYS[(d.wk + t - 1) % 4];                 // ธาตุของศัตรู (หมุนตามชั้น)
+const elOf = (d, t) => t <= 2 ? ELKEYS[(d.wk + t - 1) % 4] : ELKEYS[(d.wk + t - 1) % 6];     // ธาตุของศัตรู (หมุนตามชั้น)
 const wkOf = (d, t) => BEATEN_BY[elOf(d, t)];                      // ธาตุที่ชนะศัตรูตัวนี้ = จุดอ่อน
-const DRAGON_NAME = {fire:'มังกรเพลิง', water:'มังกรสมุทร', air:'มังกรพายุ', earth:'มังกรศิลา'};
+const resOf = el => EL4.includes(el) ? BEATS[el] : null;           // ธาตุที่ศัตรูทน (เฉพาะวงจรสี่ธาตุ · แสง/มืดไม่มี)
+const DRAGON_NAME = {fire:'มังกรเพลิง', water:'มังกรสมุทร', air:'มังกรพายุ', earth:'มังกรศิลา', light:'มังกรแสง', dark:'มังกรเงา'};
 const enemyName = (d, el) => d.name === 'มังกรเพลิง' ? DRAGON_NAME[el] : d.name;
-const matchK = () => {                                              // ธาตุ Major เทียบธาตุศัตรู: ชนะ −15% ดาเมจที่ได้รับ · แพ้ +15%
-  const M = ARC[G.arc.major.id].el;
-  return BEATS[M] === E.el ? 0.85 : BEATS[E.el] === M ? 1.15 : 1;
+const matchK = () => {                                              // ธาตุ Major เทียบธาตุศัตรู: ชนะ −15% ดาเมจที่ได้รับ · แพ้ +15% · แสง↔มืด (ชนะกันเอง) = 1
+  const M = ARC[G.arc.major.id].el, a = BEATS[M] === E.el, b = BEATS[E.el] === M;
+  return a && b ? 1 : a ? 0.85 : b ? 1.15 : 1;
 };
 // ปฏิกิริยาตราธาตุ (ตรา 2 ดวงต่างธาตุ เกิดผลเมื่อใช้ไพ่ใบถัดไป)
 const REACT = {
@@ -697,6 +707,15 @@ const REACT = {
   'air+water':  {n:'พายุเยือกแข็ง',  ic:'🧊', d:'อ่อนแรง 2',       f:() => applyE('weak', 2)},
   'earth+water':{n:'โคลน',           ic:'🟤', d:'เกราะ 10',        f:() => block(10)},
   'air+earth':  {n:'พายุทราย',       ic:'🏜️', d:'พลังงาน +1',      f:() => gainE(1)},
+  'dark+light': {n:'สุริยุปราคา',    ic:'🌘', d:'ดาเมจ 20',        f:() => atk(20)},
+  'fire+light': {n:'ลำแสงร้อน',      ic:'🔆', d:'ดาเมจ 10 + เปราะบาง 1', f:() => { atk(10); applyE('vuln', 1); }},
+  'light+water':{n:'รุ้ง',           ic:'🌈', d:'ฟื้น HP 6 + เกราะ 6', f:() => { heal(6); block(6); }},
+  'air+light':  {n:'ประกายสายฟ้า',   ic:'⚡', d:'พลังงาน +2',       f:() => gainE(2)},
+  'earth+light':{n:'ชีวิตใหม่',      ic:'🌱', d:'ฟื้น HP 8',        f:() => heal(8)},
+  'dark+fire':  {n:'เปลวสีดำ',       ic:'🖤', d:'ดาเมจ 14 (เสีย HP 2)', f:() => { atk(14); G.hp = Math.max(1, G.hp - 2); fx('player', '-2', '#ff6b6b'); }},
+  'dark+water': {n:'น้ำสาปแช่ง',     ic:'☠️', d:'อ่อนแรง 2 + เปราะบาง 1', f:() => { applyE('weak', 2); applyE('vuln', 1); }},
+  'air+dark':   {n:'ลมกระซิบ',       ic:'👻', d:'อ่อนแรง 3',        f:() => applyE('weak', 3)},
+  'dark+earth': {n:'รากสาปแช่ง',     ic:'🥀', d:'ทำลายเกราะศัตรู + เปราะบาง 2', f:() => { E.block = 0; applyE('vuln', 2); }},
 };
 const reactKey = (a, b) => [a, b].sort().join('+');
 const ENEMIES = {
@@ -789,7 +808,7 @@ function flushFx() {
 // ไพ่ต่อสู้ในมือ (Minor 4 ใบ) · c = {id, rev, used}
 function kitCardHTML(c, i) {
   const A = ARC[c.id], k = kitK(c), cost = kitCost(c);
-  const cant = !c.used && cost > C.energy, hit = A.el === E.wk, res = A.el === E.res;
+  const cant = !c.used && cost > C.energy, hit = A.el === E.wk, res = !!E.res && A.el === E.res;
   C.curEl = A.el; C.boost = boostFor(A.el);
   const desc = A.ops.map(op => `<div>${opText(op, k, c.rev, mastTier(c.id))}</div>`).join('');
   C.curEl = null; C.boost = false;
@@ -835,7 +854,7 @@ function tarotHTML(e, major = null, cls = '', attrs = '') {
   const A = eff(e), n = SAVE.owned[e.id] || 0;
   cls += ' ' + levelOf(Math.max(1, n)).cls;
   const mult = A.major ? 1 : minorMult(major, e);
-  const syn = !A.major && major && A.el === ARC[major.id].el;
+  const syn = !A.major && major && A.el === ARC[major.id].el, sup = !A.major && major && supports(ARC[major.id].el, A.el);
   return `<div class="tarot ${A.major ? '' : 'minor'} ${e.rev ? 'rev' : ''} ${cls}" style="--ec:${EL[A.el].c}" ${attrs}>
     ${n > 1 ? `<div class="lv">×${n}</div>` : ''}
     <div class="num">${A.no}</div><div class="ticon">${A.icon}${artImg(e.id)}</div>
@@ -845,7 +864,7 @@ function tarotHTML(e, major = null, cls = '', attrs = '') {
     ${e.form === 2 ? '<div class="formtag">🔁 ร่างที่สอง</div>' : ''}
     <div class="td">${A.major ? A.d(arcValue(A, e.rev, mult)) + `<div class="pe">${peText(A)}</div>` : `<b>${ROLE[A.role].ic} ${A.sk} · ⚡${A.cost}</b><br>${kitDesc(A, e.rev, mult, '<br>')}`}</div>
     ${e.rev ? `<div class="bad">⚠ ${badOf(A).d}</div>` : ''}
-    ${syn ? '<div class="syn">✨ ธาตุตรงกับ Major<br>ผล +25%</div>' : ''}
+    ${syn ? '<div class="syn">✨ ธาตุตรงกับ Major<br>ผล +25%</div>' : sup ? '<div class="syn">🤝 ธาตุส่งเสริม<br>ผล +15%</div>' : ''}
     ${!A.major && major && major.id === WORLD ? '<div class="syn">🌍 The World ขยายผล</div>' : ''}
   </div>`;
 }
@@ -874,7 +893,7 @@ function newAmu() { return {inv:{}, equip:[null, null], coins:480, pity:0}; }   
 function starterSave() {
   const owned = {};
   // Major 5 ใบ ครบทั้ง 4 ธาตุ
-  Object.keys(EL).forEach(el => owned[pick(MAJORS.filter(M => M.el === el)).id] = 1);
+  EL4.forEach(el => owned[pick(MAJORS.filter(M => M.el === el)).id] = 1);
   while (Object.keys(owned).length < 5) owned[pick(MAJORS.filter(M => !owned[M.id])).id] = 1;
   // Minor: ทุกชุดได้เลข A–5 ครบ (ครบทั้ง 4 หน้าที่) + ราชสำนัก 2 ใบต่างชุด
   Object.keys(SUITS).forEach(s => [1, 2, 3, 4, 5].forEach(r => owned[`${s}-${r}`] = 1));
@@ -1071,7 +1090,7 @@ function equippedMajor() {
 function autoKit() {
   const major = ARC[equippedMajor().id], kit = [];
   ['atk', 'def', 'buf', 'spc'].forEach(role => {
-    const score = n => (n.el === major.el ? 100 : 0) + (n.cost <= 2 ? 50 : 0) + n.rank;
+    const score = n => (n.el === major.el ? 100 : supports(major.el, n.el) ? 60 : 0) + (n.cost <= 2 ? 50 : 0) + n.rank;
     const own = MINORS.filter(n => SAVE.owned[n.id] && n.role === role && !kit.some(k => k && k.id === n.id)).sort((a, b) => score(b) - score(a));
     kit.push(own[0] ? {id:own[0].id, rev:false} : null);
   });
@@ -1182,6 +1201,8 @@ const ULTS = {
   water: {name:'น้ำพุชำระล้าง',   d:k=>`ฟื้น HP ${sc(18, k)} + เกราะ ${sc(18, k)} + Break +4`, f:k=>{ heal(sc(18, k)); block(sc(18, k)); }},
   air:   {name:'พายุแห่งจังหวะ',   d:k=>`ไพ่ทุกใบกลับมาใช้ได้อีกครั้ง + พลังงาน +4 + Break +4`, f:k=>{ C.kit.forEach(c => c.used = false); gainE(4); }},
   earth: {name:'ปราการแห่งผืนดิน', d:k=>`เกราะ ${sc(32, k)} + สะท้อนดาเมจ ${sc(10, k)} (เทิร์นนี้) + Break +4`, f:k=>{ block(sc(32, k)); C.reflectT += sc(10, k); }},
+  light: {name:'รุ่งอรุณ',         d:k=>`ดาเมจ ${sc(26, k)} + ฟื้น HP ${sc(10, k)} + Break +4 · ได้ตราแสง`, f:k=>{ atk(sc(26, k)); heal(sc(10, k)); }},
+  dark:  {name:'สุริยคราส',        d:k=>`ดาเมจ ${sc(40, k)} + เปราะบาง 2 + Break +4 · เสีย HP 8 · ได้ตรามืด`, f:k=>{ atk(sc(40, k)); applyE('vuln', 2); G.hp = Math.max(1, G.hp - 8); fx('player', '-8', '#ff6b6b'); }},
 };
 // ท่ารอง: เมื่อใช้ท่าไม้ตายครบจำนวนแล้ว หลอดพลังพิเศษที่เต็มอีกจะปล่อยท่ารองตามธาตุ (ทำซ้ำได้)
 const SECOND = {
@@ -1189,6 +1210,8 @@ const SECOND = {
   water: {name:'น้ำค้างสำรอง', d:k=>`ฟื้น HP ${sc(6, k)} + เกราะ ${sc(6, k)} + Break +2`, f:k=>{ heal(sc(6, k)); block(sc(6, k)); }},
   air:   {name:'ลมสำรอง',    d:k=>`พลังงาน +2 + Break +2`,                   f:k=>{ gainE(2); }},
   earth: {name:'ศิลาสำรอง',   d:k=>`เกราะ ${sc(14, k)} + Break +2`,           f:k=>{ block(sc(14, k)); }},
+  light: {name:'แสงสำรอง',    d:k=>`ฟื้น HP ${sc(6, k)} + ดาเมจ ${sc(8, k)} + Break +2`, f:k=>{ heal(sc(6, k)); atk(sc(8, k)); }},
+  dark:  {name:'เงาสำรอง',    d:k=>`ดาเมจ ${sc(16, k)} (เสีย HP 3) + Break +2`, f:k=>{ atk(sc(16, k)); G.hp = Math.max(1, G.hp - 3); fx('player', '-3', '#ff6b6b'); }},
 };
 // จำนวนครั้งที่ใช้ท่าไม้ตายได้ต่อมอนสเตอร์: ปกติ 1 · ศัตรูพิเศษ/บอส 2 · Major บางใบ +1 (ท่าอ่อนลง 20% ต่อครั้ง)
 const ULT2 = new Set(['M1', 'M5', 'M10', 'M19', 'M20']);
@@ -1248,7 +1271,7 @@ function startCombat(eid) {
   const hp = Math.round(rand(d.hp[0], d.hp[1]) * hpK * (1 + m.enemyHpPct));
   const pattern = d.pattern.map(q => { const o = {...q}; if (o.atk) o.atk = Math.round(o.atk * dK); if (o.block) o.block = Math.round(o.block * dK); return o; });
   const el = elOf(d, t);
-  E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:BEATS[el], brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
+  E = {...d, name:enemyName(d, el), el, wk:BEATEN_BY[el], res:resOf(el), brk:0, brkMax:d.bk, stun:0, brkLock:0, pattern, kind:d.tag === 'บอส' ? 'boss' : d.tag ? 'elite' : 'normal', tag:d.tag ? `${d.tag} · ชั้น ${t}` : (t > 1 ? `ชั้น ${t}` : ''), hp, maxHp:hp, block:m.enemyBlock, str:m.enemyStr, vuln:0, weak:0, turn:0};
   const maxE = MAXE + m.maxGauge, ultMax = ultMaxOf(G.arc.major.id), nUlt = ultUses(G.arc.major.id, E.kind);
   C = {kit:G.arc.minors.map(e => ({...e, used:false})), maxE, energy:Math.max(0, maxE + m.startGauge), block:0, str:0, strT:0,
        thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, stance:false, negate:0, parried:false, lungeE:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
@@ -1331,6 +1354,7 @@ function useUlt() {
   fx('player', `🌟 ${u.name}`, '#ffe27a');
   ST().ults++;
   C.curEl = M.el; u.f(k); C.curEl = null; addBreak(sec ? 2 : 4);
+  if (M.el === 'light' || M.el === 'dark') { C.stains.push(M.el); if (C.stains.length > 2) C.stains.shift(); }      // ท่าไม้ตายแสง/มืด ให้ตราธาตุ
   render();
   checkWin();
 }
@@ -1364,7 +1388,7 @@ const EFX = {
   stain:    {t:() => 'ศัตรูได้ตราธาตุของ Major 1 ดวง',       f:() => { C.stains.push(ARC[G.arc.major.id].el); if (C.stains.length > 2) C.stains.shift(); }},
   rand:     {t:() => 'สุ่ม 1 อย่าง: พลังงาน +1 / เกราะ 6 / ฟื้น HP 4 / ดาเมจ 6', f:(n, c) => pick([() => gainE(1), () => EFX.block.f(Math.round(6 * c.k)), () => heal(Math.round(4 * c.k)), () => hurtEnemy(Math.round(6 * c.k))])()},
 };
-const PE_EL = {fire:['counter', 8], water:['heal', 4], air:['charge', 2], earth:['block', 6]};      // ค่าเริ่มต้นตามธาตุ
+const PE_EL = {fire:['counter', 8], water:['heal', 4], air:['charge', 2], earth:['block', 6], light:['heal', 5], dark:['counter', 10]};      // ค่าเริ่มต้นตามธาตุ
 const PE_MAJOR = {M0:['rand', 0], M1:['charge', 3], M2:['weak', 1], M3:['heal', 6], M4:['block', 8], M5:['freeNext', 0], M7:['counter', 10], M9:['energy', 2],
   M10:['gold', 10], M11:['counterIn', 0], M12:['vuln', 1], M13:['pct', 5], M14:['heal', 4], M15:['devil', 12], M16:['brk', 3], M17:['healLow', 8],
   M18:['weak', 2], M19:['charge', 3], M20:['refresh', 0], M21:['stain', 0]};
@@ -1373,7 +1397,7 @@ const peText = M => { const [k, v] = peOf(M), n = copies(M.id); return `🛡 ป
 // ระดับความชำนาญ Major ตามจำนวนไพ่ซ้ำ: ตัวคูณเอฟเฟกต์ ×(1+0.1 ต่อใบ) สูงสุด ×1.6 · รวมกลับหัวไม่เกิน ×2.0 · ช่วงปัดสมบูรณ์ +5ms ต่อใบ (สูงสุด +30)
 const majorMult = id => Math.min(1.6, 1 + 0.1 * (Math.max(1, copies(id)) - 1));
 const goodLevel = id => copies(id) >= 2 ? 0.7 : 0.5;                    // 2 ใบ: หลบได้ 70%
-const RIDER = {fire:['Break +1', n => addBreak(n), 1], water:['ฟื้น HP 2', n => heal(n), 2], air:['ชาร์จพลังพิเศษ +1', n => ultAdd(n), 1], earth:['เกราะ 3', n => { C.block += n; fx('player', `+${n} 🛡`, '#8fd0ff'); }, 3]};
+const RIDER = {fire:['Break +1', n => addBreak(n), 1], water:['ฟื้น HP 2', n => heal(n), 2], air:['ชาร์จพลังพิเศษ +1', n => ultAdd(n), 1], earth:['เกราะ 3', n => { C.block += n; fx('player', `+${n} 🛡`, '#8fd0ff'); }, 3], light:['ฟื้น HP 3', n => heal(n), 3], dark:['ดาเมจ 4', n => hurtEnemy(n), 4]};
 function parryEffect(level, incoming) {
   if (level <= 0) return;
   const major = G.arc.major, M = ARC[major.id], [kind, v] = peOf(M), cp = copies(major.id);
@@ -1425,6 +1449,8 @@ function ringPlan(n) {
       else if (E.el === 'air') mult *= 0.8 + Math.random() * 0.5;            // ลม: ความเร็วสุ่มเล็กน้อย
       else if (E.el === 'earth' && i === n - 1 && n > 1) { kind = 'hold'; mult *= 1.5; }   // ดิน: หมัดท้ายหยุดค้างนาน
       else if (E.el === 'fire' && i % 2) kind = 'accel';                     // ไฟ: เร่งปลาย
+      else if (E.el === 'light' && i % 2) kind = 'hold';                     // แสง: สลับหยุดค้าง
+      else if (E.el === 'dark' && i === 1) plan.push({hit:false, T:Math.round(base * 0.75), kind:'feint', gap:200});   // มืด: หมัดหลอกกลางท่า
       if (p2 && n >= 2 && i < 2) { mult *= 0.6; gap = i === 0 ? 120 : 320; kind = 'n'; }   // เฟส 2: สองหมัดแรกติดกัน
     }
     if (p2 && E.el === 'fire' && i % 2 === 1) plan.push({hit:false, T:Math.round(base * 0.7), kind:'feint', gap:200});   // ไฟเฟส 2: หมัดหลอก
@@ -1653,12 +1679,28 @@ function arcRow(A) {
 // ================= ตั้งค่า · สถิติ · สำรอง/นำเข้าเซฟ =================
 const pc = (a, b) => b ? Math.round(100 * a / b) + '%' : '-';
 const dstr = t => { try { return new Date(t).toLocaleDateString('th-TH', {year:'numeric', month:'short', day:'numeric'}); } catch (e) { return '-'; } };
+function showElements() {
+  const row = (a, b, t) => `<div class="arow2"><span>${EL[a].ic} ${EL[a].th} ${t} ${EL[b].ic} ${EL[b].th}</span></div>`;
+  openModal(`<h2>🔄 แผนภูมิธาตุ</h2>
+    <div class="sect">ชนะ / แพ้ (ดาเมจ ×${WEAK_K} / ×${RES_K})</div>
+    ${row('water', 'fire', 'ชนะ')}${row('fire', 'earth', 'ชนะ')}${row('earth', 'air', 'ชนะ')}${row('air', 'water', 'ชนะ')}
+    <div class="arow2"><span>✨ แสง ↔ 🌑 มืด ชนะกันเอง (×${WEAK_K} ทั้งสองทาง) · กับสี่ธาตุเดิมเป็นกลาง</span></div>
+    <div class="muted">ไพ่ที่ชนะธาตุศัตรู = ดาเมจ ×1.5 · ที่แพ้ ×0.75 (เฉพาะดาเมจ) · ธาตุ Major ชนะธาตุศัตรู: ดาเมจที่ได้รับ −15% · แพ้ +15%</div>
+    <div class="sect">ส่งเสริม (Major → Minor ผล ×1.15 · ธาตุเดียวกัน ×1.25)</div>
+    <div class="arow2"><span>🔥 ไฟ ↔ 🌪️ ลม · 💧 น้ำ ↔ 🌿 ดิน</span></div>
+    <div class="arow2"><span>✨ แสง → 🔥 ไฟ, 🌿 ดิน · 🌑 มืด → 💧 น้ำ, 🌪️ ลม</span></div>
+    <div class="sect">ปฏิกิริยาตราธาตุ (ตรา 2 ดวงต่างธาตุ)</div>
+    ${Object.entries(REACT).map(([k, R]) => `<div class="arow2"><span>${k.split('+').map(x => EL[x].ic).join('')} ${R.ic} ${R.n}</span><span>${R.d}</span></div>`).join('')}
+    <div class="muted">ธาตุแสง/มืดไม่มีชุดไพ่ Minor (ตอนนี้) ตราแสง/มืดมาจากท่าไม้ตายของ Major ธาตุนั้น</div>
+    <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
+}
 function showSettings() {
   openModal(`<h2>⚙️ ตั้งค่า</h2>
     <div class="box" style="text-align:center">เวอร์ชัน ${GAME_VER} · ข้อมูลเก็บในเครื่องนี้เท่านั้น</div>
     <button class="btn sec" style="width:100%" onclick="toggleParry();showSettings()">🎯 ปัดตามจังหวะ: ${parryOn() ? 'เปิด' : 'ปิด'}</button>
     <button class="btn sec" style="width:100%" onclick="toggleAssist();showSettings()">🤝 โหมดช่วยเหลือการปัด: ${assistOn() ? 'เปิด' : 'ปิด'}</button>
     <div class="muted" style="margin-top:-6px">ช่วงปัดกว้างขึ้น วงแหวนช้าลง แลกกับผลปัดสมบูรณ์ลดลงเล็กน้อย (เหมาะกับสัญญาณหน่วง)</div>
+    <button class="btn sec" style="width:100%" onclick="showElements()">🔄 แผนภูมิธาตุ</button>
     <button class="btn sec" style="width:100%" onclick="showStats()">📊 สถิติของฉัน</button>
     <button class="btn sec" style="width:100%" onclick="showBackup()">💾 สำรองเซฟ / นำเข้าเซฟ</button>
     <button class="link-btn" onclick="resetAll()">🗑 ล้างข้อมูลเกมทั้งหมด</button>
@@ -1779,14 +1821,16 @@ function showGuide() {
     <li>ไม่มีการทิ้งไพ่ — เป็นเรื่องของการ <b>บริหารพลังงาน</b> ว่าจะใช้ใบไหนก่อน ใบไหนเก็บพลังงานไว้ให้เทิร์นหน้า</li>
     <li>ตัวเลข <span style="color:#7ef08a">สีเขียว</span> = สูงกว่าค่าปกติ (มีโบนัส) · <span style="color:#ff8a7a">สีแดง</span> = ต่ำกว่า</li></ul>
 
-    <h3>🔄 วงจรธาตุ</h3>
-    <ul><li><b>💧 น้ำ ชนะ 🔥 ไฟ ชนะ 🌿 ดิน ชนะ 🌪️ ลม ชนะ 💧 น้ำ</b></li>
-    <li>ศัตรูแต่ละตัวมี <b>ธาตุประจำตัว</b> (เปลี่ยนตามชั้น) ไพ่ธาตุที่ <b>ชนะ</b> ธาตุศัตรู = ดาเมจ ×1.5 (🎯 อ่อนต่อ) · ไพ่ธาตุที่ <b>แพ้</b> = ×0.75 · ดูป้ายใต้การ์ด</li>
-    <li>ธาตุ Major ของคุณ <b>ชนะ</b> ธาตุศัตรู: ดาเมจที่ได้รับ −15% · <b>แพ้</b>: +15% (ประตูแสดง ✅ / ⚠ ให้)</li></ul>
+    <h3>🔄 วงจรธาตุ (6 ธาตุ)</h3>
+    <ul><li><b>💧 น้ำ ชนะ 🔥 ไฟ ชนะ 🌿 ดิน ชนะ 🌪️ ลม ชนะ 💧 น้ำ</b> · <b>✨ แสง ↔ 🌑 มืด</b> ชนะกันเอง (กับสี่ธาตุเดิมเป็นกลาง)</li>
+    <li>ศัตรูแต่ละตัวมี <b>ธาตุประจำตัว</b> (เปลี่ยนตามชั้น · แสง/มืดเริ่มพบที่ชั้น 3) ไพ่ธาตุที่ <b>ชนะ</b> ธาตุศัตรู = ดาเมจ ×1.5 (🎯 อ่อนต่อ) · ไพ่ธาตุที่ <b>แพ้</b> = ×0.75 · ดูป้ายใต้การ์ด · แตะป้ายธาตุศัตรูเพื่อดูแผนภูมิ</li>
+    <li>ธาตุ Major ของคุณ <b>ชนะ</b> ธาตุศัตรู: ดาเมจที่ได้รับ −15% · <b>แพ้</b>: +15% (ประตูแสดง ✅ / ⚠ ให้)</li>
+    <li><b>ส่งเสริม 🤝:</b> Major ส่งเสริม Minor บางธาตุ ผล ×1.15 (ธาตุเดียวกัน ×1.25): ไฟ↔ลม · น้ำ↔ดิน · แสง→ไฟ,ดิน · มืด→น้ำ,ลม</li>
+    <li>ไพ่ Minor มี 4 ชุด (ไฟ น้ำ ลม ดิน) · แสง/มืดเป็นธาตุของ Major 6 ใบ (Sun, Star, Judgement = แสง · Moon, Death, Devil = มืด) ท่าไม้ตายของ Major แสง/มืดใช้ธาตุของตัวเอง และให้ตราธาตุ</li></ul>
 
     <h3>🧪 ตราธาตุ</h3>
     <ul><li>ทุกครั้งที่ใช้ไพ่ ศัตรูได้ <b>ตราธาตุ</b> ของไพ่นั้น (เก็บได้ 2 ดวง ดวงใหม่ดันดวงเก่าออก)</li>
-    <li>ตรา 2 ดวง <b>ต่างธาตุ</b> = ปฏิกิริยา เกิดตอนใช้ไพ่ใบถัดไป: ♨️ น้ำ+ไฟ Break +4 · 💥 ไฟ+ลม ดาเมจ 12 · 🌋 ไฟ+ดิน เปราะบาง 2 · 🧊 น้ำ+ลม อ่อนแรง 2 · 🟤 น้ำ+ดิน เกราะ 10 · 🏜️ ลม+ดิน พลังงาน +1</li>
+    <li>ตรา 2 ดวง <b>ต่างธาตุ</b> = ปฏิกิริยา เกิดตอนใช้ไพ่ใบถัดไป: ♨️ น้ำ+ไฟ Break +4 · 💥 ไฟ+ลม ดาเมจ 12 · 🌋 ไฟ+ดิน เปราะบาง 2 · 🧊 น้ำ+ลม อ่อนแรง 2 · 🟤 น้ำ+ดิน เกราะ 10 · 🏜️ ลม+ดิน พลังงาน +1 · และคู่แสง/มืด 9 แบบ (ดูแผนภูมิธาตุที่ ⚙️ ตั้งค่า)</li>
     <li>ตรา 2 ดวง <b>ธาตุเดียวกัน</b> = ไพ่ธาตุนั้นใบถัดไปแรงขึ้น 25%</li>
     <li>ผสมไพ่หลายชุดเพื่อให้เกิดปฏิกิริยา · โจมตีพื้นฐานและท่าไม้ตายไม่ให้ตรา</li></ul>
 
@@ -1876,7 +1920,7 @@ function doorHTML(d, i) {
     const e = ENEMIES[d.eid], hp = Math.round((e.hp[0] + e.hp[1]) / 2 * (1 + TIER_HP * (G.tier - 1)) * ENEMY_HP_K);
     const exp = Math.round(EXPV[t] * tierExpMult(G.tier) * expMult(G.first, G.lv0, G.tier));
     const extra = t === 'elite' ? '<br>ผงดาว + ทอง มากกว่าปกติ' : t === 'boss' ? '<br>ชนะเพื่อปลดล็อกชั้นถัดไป' : '<br>ได้ผงดาว + ทอง';
-    body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${enemyName(e, elOf(e, G.tier))}</b><small>HP ~${hp} · ⭐ +${exp} EXP · ${EL[elOf(e, G.tier)].ic} ธาตุ${EL[elOf(e, G.tier)].th} · 🎯 อ่อนต่อ ${EL[wkOf(e, G.tier)].ic}${(() => { const M = ARC[G.arc.major.id].el, el = elOf(e, G.tier); return BEATS[M] === el ? ' · ✅ Major ชนะธาตุนี้' : BEATS[el] === M ? ' · ⚠ Major แพ้ธาตุนี้' : ''; })()}${extra}</small></span>`;
+    body = `<span class="dart">${e.art}</span><span class="dinfo"><b>${N.ic} ${t === 'boss' ? 'บอส · ' : ''}${enemyName(e, elOf(e, G.tier))}</b><small>HP ~${hp} · ⭐ +${exp} EXP · ${EL[elOf(e, G.tier)].ic} ธาตุ${EL[elOf(e, G.tier)].th} · 🎯 อ่อนต่อ ${EL[wkOf(e, G.tier)].ic}${(() => { const M = ARC[G.arc.major.id].el, el = elOf(e, G.tier), a = BEATS[M] === el, b = BEATS[el] === M; return a && b ? '' : a ? ' · ✅ Major ชนะธาตุนี้' : b ? ' · ⚠ Major แพ้ธาตุนี้' : ''; })()}${extra}</small></span>`;
   } else if (t === 'shop') body = `<span class="dart">🛒</span><span class="dinfo"><b>ร้านเครื่องราง</b><small>ซื้อเครื่องรางชั่วคราว (เฉพาะรอบนี้) · ยาฟื้น HP</small></span>`;
   else body = `<span class="dart">🔥</span><span class="dinfo"><b>กองไฟ</b><small>ฟื้น HP ${pct(REST.frac * G.mods.restMult)} หรือเปลี่ยนไพ่ต่อสู้ 1 ใบ</small></span>`;
   return `<button class="door ${t}" onclick="chooseDoor(${i})">${body}<span class="dgo">▶</span></button>`;
@@ -1995,7 +2039,7 @@ const SCREENS = {
       <div class="arow" style="--ec:${EL[M.el].c}"><span class="ai">${M.icon}</span><span><b>${M.en}</b> — ${M.th}${AR.major.rev ? ' 🔻' : ''} <small>${EL[M.el].ic} ${EL[M.el].th}</small><br>
         ${eff(AR.major).d(arcValue(eff(AR.major), AR.major.rev))}<br><small>${peText(M)}</small><br><small>🌟 ${u.name}: ${u.d(ultK(AR.major))}<br>${ultInfo(M)}</small></span></div>
       ${AR.minors.map(e => { const A = ARC[e.id]; return `<div class="arow" style="--ec:${EL[A.el].c}"><span class="ai">${ROLE[A.role].ic}</span><span>
-        <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost}${e.rev ? ' · 🔻' : ''}${A.el === M.el ? ' · ✨ธาตุตรง +25%' : ''}</small><br>${kitDesc(A, e.rev, minorMult(AR.major, e))}</span></div>`; }).join('')}
+        <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost}${e.rev ? ' · 🔻' : ''}${A.el === M.el ? ' · ✨ธาตุตรง +25%' : supports(M.el, A.el) ? ' · 🤝ส่งเสริม +15%' : ''}</small><br>${kitDesc(A, e.rev, minorMult(AR.major, e))}</span></div>`; }).join('')}
       ${empty ? `<div class="box" style="border:1px solid #ff9a4a;text-align:center">⚠ ยังมีช่องว่าง ${empty} ช่อง · ไปติดตั้งที่หน้า 🧙 ตัวละคร</div>` : ''}
       <div class="chosen">💍 ${equipText()}</div>
       <button class="btn sec" onclick="amuBack='arcana';screen='amulets';render()">💍 จัดเครื่องราง</button>
@@ -2152,7 +2196,7 @@ const SCREENS = {
       <div class="stains">🧪 ตรา ${[0, 1].map(i => C.stains[i] ? `<span class="sd" style="--ec:${EL[C.stains[i]].c}">${EL[C.stains[i]].ic}</span>` : `<span class="sd" style="--ec:#555;opacity:.4">·</span>`).join('')}
         ${C.stains.length === 2 ? (C.stains[0] === C.stains[1] ? `<span class="rx">✨ ไพ่ธาตุนี้ใบถัดไป +25%</span>` : (R => `<span class="rx">${R.ic} ${R.n}: ${R.d} (ใช้ไพ่ใบถัดไป)</span>`)(REACT[reactKey(C.stains[0], C.stains[1])])) : ''}</div>
       <div class="statuses">
-        <span class="st wk">${EL[E.el].ic} ธาตุ${EL[E.el].th} · 🎯 อ่อนต่อ ${EL[E.wk].ic} ×${WEAK_K} · ⬇ ทน ${EL[E.res].ic} ×${RES_K}</span>
+        <span class="st wk" onclick="event.stopPropagation();showElements()">${EL[E.el].ic} ธาตุ${EL[E.el].th} · 🎯 อ่อนต่อ ${EL[E.wk].ic} ×${WEAK_K}${E.res ? ` · ⬇ ทน ${EL[E.res].ic} ×${RES_K}` : ''} ❔</span>
         ${E.block ? `<span class="st blk">🛡 ${E.block}</span>` : ''}
         ${E.str ? `<span class="st">💪 พลัง ${E.str}</span>` : ''}
         ${E.vuln ? `<span class="st">🎯 เปราะบาง ${E.vuln}</span>` : ''}
