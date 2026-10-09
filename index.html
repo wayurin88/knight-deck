@@ -548,8 +548,12 @@ const ARC = Object.fromEntries([...MAJORS, ...MINORS].map(a => [a.id, a]));
 let KIT_POWER = 1;                                   // ตัวคูณพลังไพ่ต่อสู้ทั้งหมด (ปรับสมดุล)
 let ENEMY_HP_K = 2.6, ENEMY_DMG_K = 2.2;             // ตัวคูณความแกร่งศัตรูทั้งหมด (สอบเทียบด้วยบอทจำลอง หลังเปลี่ยนเป็นระบบ Minor 4 ช่อง)
 const sc = (n, k) => Math.max(1, Math.round(n * k * KIT_POWER));
-function opText(op, k, rev) {
-  const [t, a, b] = op, n = sc(a || 0, k), st = (a || 0) + (rev ? 1 : 0);
+// ไพ่ Minor ซ้ำ (M1): ไม่เพิ่มตัวเลข แต่เปิดผลเสริมเล็ก ๆ ตามบทบาทที่ 3 และ 7 ใบ
+const mastTier = id => { const n = copies(id); return n >= 7 ? 2 : n >= 3 ? 1 : 0; };
+const MRIDER = {atk:['Break +1 หลังโจมตี', 'Break +2 หลังโจมตี'], def:['เกราะที่ได้ +10%', 'เกราะ +20% และฟื้น HP 2'], buf:['ชาร์จพลังพิเศษ +1', 'ชาร์จพลังพิเศษ +2'], spc:['อ่อนแรง/เปราะบางที่ตั้งต้น ≥2 นานขึ้น +1 เทิร์น', 'อ่อนแรง/เปราะบางนานขึ้น +1 เทิร์นทุกค่า']};
+const statBonus = (a, mt) => mt >= 2 ? 1 : mt >= 1 && a >= 2 ? 1 : 0;
+function opText(op, k, rev, mt = 0) {
+  const [t, a, b] = op, n = sc(a || 0, k), st = (a || 0) + (rev ? 1 : 0) + ((t === 'weak' || t === 'vuln') ? statBonus(a, mt) : 0);
   switch (t) {
     case 'atk': return b > 1 ? `ดาเมจ ${D(n)} ×${b}` : `ดาเมจ ${D(n)}`;
     case 'atkdrain': return `ดาเมจ ${D(n)} · ฟื้น HP ครึ่งหนึ่งของที่ทำได้`;
@@ -567,10 +571,11 @@ function opText(op, k, rev) {
   }
   return '';
 }
-const kitDesc = (A, rev, mult = 1, sep = ' · ') => A.ops.map(op => opText(op, mult * (rev ? REV_K : 1), rev)).join(sep);
+const kitDesc = (A, rev, mult = 1, sep = ' · ') => A.ops.map(op => opText(op, mult * (rev ? REV_K : 1), rev, mastTier(A.id))).join(sep);
 function runOps(ops, k, rev, cid) {
+  const mt = mastTier(cid);
   ops.forEach(([t, a, b]) => {
-    const n = sc(a || 0, k), st = (a || 0) + (rev ? 1 : 0);
+    const n = sc(a || 0, k), st = (a || 0) + (rev ? 1 : 0) + ((t === 'weak' || t === 'vuln') ? statBonus(a, mt) : 0);
     if (t === 'atk') for (let i = 0; i < (b || 1); i++) atk(n);
     else if (t === 'atkdrain') { const d = atk(n); if (d > 0) heal(Math.max(1, Math.floor(d / 2))); }
     else if (t === 'atkblk') atk(Math.max(n, C.block));
@@ -777,7 +782,7 @@ function kitCardHTML(c, i) {
   const A = ARC[c.id], k = kitK(c), cost = kitCost(c);
   const cant = !c.used && cost > C.energy, hit = A.el === E.wk, res = A.el === E.res;
   C.curEl = A.el; C.boost = boostFor(A.el);
-  const desc = A.ops.map(op => `<div>${opText(op, k, c.rev)}</div>`).join('');
+  const desc = A.ops.map(op => `<div>${opText(op, k, c.rev, mastTier(c.id))}</div>`).join('');
   C.curEl = null; C.boost = false;
   return `<div class="kcard ${hit ? 'wkhit' : ''} ${c.used ? 'used' : ''} ${cant ? 'cant' : ''} ${C.sel === i ? 'sel' : ''} ${c.rev ? 'isrev' : ''}" style="--ec:${EL[A.el].c}" data-i="${i}">
     <div class="cost">${cost}</div><div class="krole">${ROLE[A.role].ic}</div>
@@ -1014,6 +1019,16 @@ function ctile(A) {
     ${A.alt ? `<span class="alt">${canAlt(A.id) ? '🔁' : '🔒'}</span>` : ''}
     <span class="ci">${A.icon}</span><span>${A.no}</span>${n ? `<span class="cnt">×${n}</span>` : ''}</button>`;
 }
+function masteryHTML(A) {
+  const n = copies(A.id), row = (at, txt) => `<div class="arow2 ${n >= at ? 'cur' : ''}"><span>${n >= at ? '✅' : '🔒'} ${at} ใบ</span><span>${txt}</span></div>`;
+  if (A.major) {
+    const el = RIDER[A.el][0];
+    return `<div class="sect">🛡 ระดับปัดสำเร็จ (ตามจำนวนไพ่ซ้ำ)</div>
+      <div class="muted">ตอนนี้มี ${n} ใบ · เอฟเฟกต์ ×${majorMult(A.id).toFixed(1)} (สูงสุด ×1.6 ที่ 7 ใบ) · ช่วงปัดสมบูรณ์ ±${PARRY.perfect + Math.min(30, 5 * Math.max(0, n - 1))}ms</div>
+      ${row(2, 'หลบ ได้ 70% ของเอฟเฟกต์')}${row(3, 'ผ่านเกณฑ์หลายหมัดง่ายขึ้น')}${row(5, `ผลเสริมเมื่อปัดสมบูรณ์: ${el}`)}${row(7, 'ปรมาจารย์: ผลเสริมทำงานแม้ได้แค่หลบ')}`;
+  }
+  return `<div class="sect">✨ ผลเสริมจากไพ่ซ้ำ</div>${row(3, MRIDER[A.role][0])}${row(7, MRIDER[A.role][1])}`;
+}
 function showArcDetail(id) {
   const A = ARC[id], n = SAVE.owned[id] || 0, form = canAlt(id) && SAVE.form[id] === 2 ? 2 : 1, nl = nextLevel(n);
   openModal(`<div style="flex:1"></div>
@@ -1021,6 +1036,7 @@ function showArcDetail(id) {
     <div class="muted">${n ? `มี ${n}/${MAX_COPIES} ใบ · ${levelOf(n).name}${nl ? `<br>อีก ${nl.at - n} ใบ → ${nl.name}` : ''}` : 'ยังไม่มีไพ่ใบนี้'}<br>
       🔻 ไพ่กลับหัว: ${canRev(id) ? '<b style="color:#7ef08a">ปลดล็อกแล้ว</b>' : `ปลดล็อกเมื่อมีครบ ${REV_AT} ใบ (ตอนนี้ ${n})`}</div>
     ${arcRow(A)}
+    ${masteryHTML(A)}
     ${A.alt ? `<div class="arow" style="--ec:#9fd8ff"><span class="ai">🔁</span><span><b>ร่างที่สอง</b> ${canAlt(id) ? '' : `<small>🔒 สะสมครบ ${ALT_AT} ใบเพื่อปลดล็อก</small>`}<br>
       ${A.alt.d(A.alt.v)}<br><small class="bad">🔻 กลับหัว: ${A.alt.d(A.alt.rv)} · ⚠ ${badOf(A).d}</small></span></div>` : ''}
     ${artBtn(id)}
@@ -1086,7 +1102,7 @@ function kitOptions(major, onclick, exclude = []) {
       const k = minorMult(major, {id:A.id}) * (rev ? REV_K : 1);
       return `<button class="arow" style="--ec:${EL[A.el].c}" onclick="${onclick(A.id, rev)}"><span class="ai">${ROLE[A.role].ic}</span><span>
         <b>${A.sk}</b> <small>${A.th} · ⚡${A.cost} · ×${copies(A.id)}${rev ? ' · <span style="color:#ff8a7a">🔻 กลับหัว</span>' : ''}</small><br>
-        ${A.ops.map(op => opText(op, k, rev)).join(' · ')}${rev ? `<br><small class="bad">⚠ ${badOf(A).d}</small>` : ''}</span></button>`;
+        ${A.ops.map(op => opText(op, k, rev, mastTier(A.id))).join(' · ')}${rev ? `<br><small class="bad">⚠ ${badOf(A).d}</small>` : ''}</span></button>`;
     }).join('')).join('');
   }).join('');
 }
@@ -1255,8 +1271,15 @@ function playKit(i) {
   if (C.freeLeft > 0) C.freeLeft--;
   C.sel = null; c.used = true;
   C.curEl = A.el; C.boost = boostFor(A.el);
+  const blk0 = C.block;
   runOps(A.ops, kitK(c), c.rev, c.id);
   C.curEl = null; C.boost = false;
+  const mt = mastTier(c.id);
+  if (mt) {                                                    // ผลเสริมจากไพ่ซ้ำ (3 / 7 ใบ)
+    if (A.role === 'atk') addBreak(mt);
+    else if (A.role === 'buf') ultAdd(mt);
+    else if (A.role === 'def') { const x = Math.ceil((C.block - blk0) * (mt === 2 ? 0.2 : 0.1)); if (x > 0) C.block += x; if (mt === 2) heal(2); }
+  }
   applyStain(A.el);
   if (A.ops.some(o => o[0].startsWith('atk'))) C.atkCount++;
   if (A.role === 'atk' || A.role === 'spc') addBreak(2 + (A.el === E.wk ? 1 : 0));
@@ -1312,13 +1335,22 @@ const PE_MAJOR = {M0:['rand', 0], M1:['charge', 3], M2:['weak', 1], M3:['heal', 
   M10:['gold', 10], M11:['counterIn', 0], M12:['vuln', 1], M13:['pct', 5], M14:['heal', 4], M15:['devil', 12], M16:['brk', 3], M17:['healLow', 8],
   M18:['weak', 2], M19:['charge', 3], M20:['refresh', 0], M21:['stain', 0]};
 const peOf = M => PE_MAJOR[M.id] || PE_EL[M.el];
-const peText = M => { const [k, v] = peOf(M); return `🛡 ปัดสำเร็จ: ${EFX[k].t(v)}`; };
+const peText = M => { const [k, v] = peOf(M), n = copies(M.id); return `🛡 ปัดสำเร็จ: ${EFX[k].t(v)}${n > 1 && M.major ? ` · ×${majorMult(M.id).toFixed(1)}` : ''}`; };
+// ระดับความชำนาญ Major ตามจำนวนไพ่ซ้ำ: ตัวคูณเอฟเฟกต์ ×(1+0.1 ต่อใบ) สูงสุด ×1.6 · รวมกลับหัวไม่เกิน ×2.0 · ช่วงปัดสมบูรณ์ +5ms ต่อใบ (สูงสุด +30)
+const majorMult = id => Math.min(1.6, 1 + 0.1 * (Math.max(1, copies(id)) - 1));
+const parryPerfect = () => PARRY.perfect + Math.min(30, 5 * (Math.max(1, copies(G.arc.major.id)) - 1));
+const goodLevel = id => copies(id) >= 2 ? 0.7 : 0.5;                    // 2 ใบ: หลบได้ 70%
+const RIDER = {fire:['Break +1', n => addBreak(n), 1], water:['ฟื้น HP 2', n => heal(n), 2], air:['ชาร์จพลังพิเศษ +1', n => ultAdd(n), 1], earth:['เกราะ 3', n => { C.block += n; fx('player', `+${n} 🛡`, '#8fd0ff'); }, 3]};
 function parryEffect(level, incoming) {
   if (level <= 0) return;
-  const major = G.arc.major, M = ARC[major.id], [kind, v] = peOf(M);
-  const k = level * (major.rev ? REV_K : 1), n = Math.max(1, Math.round(v * k));
+  const major = G.arc.major, M = ARC[major.id], [kind, v] = peOf(M), cp = copies(major.id);
+  const k = Math.min(2.0, level * (major.rev ? REV_K : 1) * majorMult(major.id)), n = Math.max(1, Math.round(v * k));
   fx('player', `🛡 ${M.en}`, '#ffe27a');
   EFX[kind].f(n, {k, incoming}, v);
+  if (cp >= 5 && (level >= 1 || (cp >= 7 && level > 0))) {               // 5 ใบ: ผลเสริมตามธาตุ · 7 ใบ: ทำงานแม้ได้แค่หลบ (ครึ่งหนึ่ง)
+    const R = RIDER[M.el], rv = Math.max(1, Math.round(R[2] * (level >= 1 ? 1 : 0.5)));
+    R[1](rv);
+  }
   ST().pe = (ST().pe || 0) + 1;
 }
 // ปัด/หลบตามจังหวะ: วงแหวนหดเข้ากรอบ แตะตอนตรงกรอบ · ปิดได้ที่หน้าแรก (ปุ่ม 🛡 ตั้งรับใช้ได้เสมอ)
@@ -1333,7 +1365,7 @@ function parryRing(ov, it, i, n, done) {                       // วงแห�
     <div class="pr-txt">${E.name} โจมตี ${n > 1 ? `ครั้งที่ ${i + 1}/${n}` : ''}<br><b>แตะเมื่อวงแหวนตรงกรอบ!</b></div>`;
   const t0 = Date.now(); let fin = false;
   const end = grade => { if (fin) return; fin = true; ov.onpointerdown = null; done(grade); };
-  ov.onpointerdown = () => { const e = Math.abs(Date.now() - t0 - T); end(e <= PARRY.perfect ? 'perfect' : e <= PARRY.good ? 'good' : 'miss'); };
+  ov.onpointerdown = () => { const e = Math.abs(Date.now() - t0 - T); end(e <= parryPerfect() ? 'perfect' : e <= PARRY.good ? 'good' : 'miss'); };
   setTimeout(() => end('miss'), T + PARRY.good + 80);
 }
 function guard() {                                         // ตั้งรับ: ไม่ต้องจับจังหวะ ลดดาเมจเทิร์นนี้ครึ่งหนึ่ง แลกพลังงาน 1
@@ -1363,8 +1395,9 @@ function enemyTurn() {
   const all = () => {
     if (ov) ov.remove();
     let level = 0;
-    if (useParry) { const sc = grades.reduce((a, g) => a + (g === 'perfect' ? 1 : g === 'good' ? .5 : 0), 0) / n; level = sc >= .85 ? 1 : sc >= .4 ? .5 : 0; }
-    else if (C.guard) level = .5;                              // ปิดโหมดปัด: ตั้งรับสำเร็จ = หลบ (ครึ่งหนึ่ง)
+    const mid = G.arc.major.id, cp = copies(mid), half = goodLevel(mid);
+    if (useParry) { const sc = grades.reduce((a, g) => a + (g === 'perfect' ? 1 : g === 'good' ? .5 : 0), 0) / n; level = sc >= (cp >= 3 ? .7 : .85) ? 1 : sc >= (cp >= 3 ? .3 : .4) ? half : 0; }
+    else if (C.guard) level = half;                            // ปิดโหมดปัด: ตั้งรับสำเร็จ = หลบ
     if (G.hp > 0 && E.hp > 0) parryEffect(level, incoming);
     enemyFinish();
   };
@@ -1653,6 +1686,7 @@ function showGuide() {
     <li>✨ <b>ปัดสมบูรณ์</b> ดาเมจ −75% + พลังงาน +1 + ชาร์จพลังพิเศษ +2 · 👍 <b>หลบ</b> ดาเมจ −40% · พลาด = ดาเมจเต็ม</li>
     <li>ศัตรูที่ตีหลายครั้ง = วงแหวนหลายรอบ (ศัตรูแต่ละตัวมีจังหวะและความเร็วต่างกัน บอสเร็วและเปลี่ยนจังหวะที่สุด) แต่ละครั้งตัดสินดาเมจแยกกัน</li>
     <li><b>Major แต่ละใบมีเอฟเฟกต์เมื่อปัดสำเร็จ</b> (ดูบรรทัด 🛡 บนไพ่) ปัดสมบูรณ์ทุกครั้งในท่า = เต็ม · ปัดได้ประมาณครึ่ง = ครึ่งหนึ่ง · ได้ 1 ครั้งต่อท่าศัตรู · เมื่อปิดโหมดปัด การตั้งรับ 🛡 ที่ถูกโจมตี นับเป็นครึ่งหนึ่ง</li>
+    <li><b>ไพ่ซ้ำทำให้ชำนาญขึ้น:</b> Major ยิ่งมีหลายใบ เอฟเฟกต์ปัดสำเร็จแรงขึ้น (สูงสุด ×1.6 ที่ 7 ใบ) · 2 ใบ หลบได้ 70% · 3 ใบ เกณฑ์หลายหมัดง่ายขึ้น · 5 ใบ ผลเสริมตามธาตุ · 7 ใบ ผลเสริมทำงานแม้แค่หลบ · ช่วงปัดสมบูรณ์กว้างขึ้นเล็กน้อย · Minor มีผลเสริมเล็ก ๆ ที่ 3 และ 7 ใบ (ดูที่สมุดไพ่)</li>
     <li>ไม่ถนัดจับจังหวะ ปิดได้ที่หน้าแรก (🎯 ปัดตามจังหวะ) หรือใช้ปุ่ม <b>🛡 ตั้งรับ</b> (เสีย 1⚡ ลดดาเมจเทิร์นนั้น 50% ไม่ต้องจับจังหวะ ใช้ได้ทั้งตอนเปิด/ปิดโหมดปัด)</li></ul>
 
     <h3>🌟 พลังพิเศษและท่าไม้ตาย</h3>
