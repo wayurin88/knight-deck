@@ -238,6 +238,12 @@ button.arow{color:var(--txt);text-align:left}
 .pr-ring.feint~*{}
 @keyframes prhold{0%{transform:scale(1);opacity:.45}42%{transform:scale(.64);opacity:.8}68%{transform:scale(.64);opacity:.8}100%{transform:scale(.33);opacity:1}}
 .stance{background:rgba(120,30,30,.75);border:1px solid #ff8a8a;border-radius:12px;padding:5px 10px;font-size:12.5px;text-align:center;line-height:1.35;animation:pulse 1s ease-in-out infinite alternate;--ec:#ff6b6b}
+.coach{position:absolute;inset:0;background:rgba(0,0,0,.62);z-index:340;display:flex;padding:70px 14px}
+.coach.cbot{align-items:flex-end;padding-bottom:96px}.coach.ctop{align-items:flex-start}
+.cbub{width:100%;background:#241d36;border:2px solid #ffd25a;border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.55;box-shadow:0 8px 30px rgba(0,0,0,.7)}
+.cbtns{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:12px;opacity:.95}
+.coach-hl{position:relative;z-index:350!important;outline:3px solid #ffe27a;outline-offset:3px;border-radius:10px;box-shadow:0 0 22px #ffe27a!important}
+.hintbox{position:absolute;top:96px;left:12px;right:12px;z-index:320;background:rgba(36,29,54,.97);border:1px solid #ffd25a;border-radius:12px;padding:9px 12px;font-size:13.5px;line-height:1.5;animation:enter .3s both;box-shadow:0 6px 20px rgba(0,0,0,.6)}
 .pr-txt{text-align:center;line-height:1.6;font-size:16px;text-shadow:0 2px 4px #000}
 .ultbtn{--ec:#ffd25a;flex:1;position:relative;overflow:hidden;background:rgba(0,0,0,.5);border:2px solid var(--ec);border-radius:12px;padding:7px 10px;font-weight:700;font-size:13px;line-height:1.25;text-align:center;color:var(--txt)}
 .ultbtn small{display:block;font-weight:400;font-size:11px;opacity:.85}
@@ -932,7 +938,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.6.0';
+const GAME_VER = '0.7.0';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -1197,10 +1203,12 @@ function rebuildMods() {
 function chooseDoor(i) {
   const d = G.doors[i]; if (!d) return;
   G.node = d;
+  if (d.t === 'elite') hint('elite', '<b>ศัตรูพิเศษ</b> แข็งแกร่งกว่าปกติ แต่ได้ผงดาวและทองมากกว่า');
+  if (d.t === 'boss') hint('boss', '<b>บอส</b> มีท่าพิเศษ เช่นตั้งท่าปัดไพ่โจมตี ดูแถบแดงเหนือศัตรู และจังหวะวงแหวนซับซ้อนกว่าปกติ');
   if (d.eid) startCombat(d.eid);
-  else if (d.t === 'shop') openShop();
-  else if (d.t === 'mystery') openEvent();
-  else { screen = 'rest'; render(); }
+  else if (d.t === 'shop') { hint('shop', '<b>ร้านเครื่องราง</b> ซื้อด้วยทอง เครื่องรางใช้ได้เฉพาะรอบนี้'); openShop(); }
+  else if (d.t === 'mystery') { hint('mystery', '<b>ประตูลึกลับ</b> เหตุการณ์สุ่ม อ่านทางเลือกให้ดี บางทางเสี่ยง'); openEvent(); }
+  else { hint('rest', '<b>กองไฟ</b> ฟื้น HP หรือเปลี่ยนไพ่ต่อสู้ 1 ใบ (เฉพาะรอบนี้)'); screen = 'rest'; render(); }
 }
 function nextFloor() {                                   // จบด่านนี้ → ไปด่านถัดไป
   G.stage++; G.doors = genDoors(G.stage, G.tier);
@@ -1268,6 +1276,7 @@ function applyStain(el) {                                      // ใช้ไ�
   }
   if (boostFor(el)) { C.stains = [el]; return; }               // ตราคู่ซ้ำถูกใช้ไปกับไพ่ใบนี้แล้ว
   st.push(el); if (st.length > 2) st.shift();
+  if (st.length === 2 && st[0] !== st[1]) hint('react', '<b>ตราธาตุ 2 ดวงต่างธาตุ</b> จะเกิดปฏิกิริยาเมื่อคุณใช้ไพ่ใบถัดไป ดูข้อความข้างหลอด HP');
 }
 function stanceCounter() {                                     // บอสสวนกลับ 20% ของท่าโจมตีเฉลี่ย (ไม่ผ่านเกราะ ไม่ทำให้ตาย)
   const acts = E.pattern.filter(q => q.atk), avg = acts.reduce((a, q) => a + enemyDmg(q.atk) * (q.hits || 1), 0) / Math.max(1, acts.length);
@@ -1277,7 +1286,7 @@ function stanceCounter() {                                     // บอสส�
 function addBreak(n) {
   if (n <= 0 || E.stun > 0 || E.brkLock > 0 || E.hp <= 0) return;
   E.brk = Math.min(E.brkMax, E.brk + n);
-  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; C.stance = false; ST().breaks++; track('break'); fx('enemy', '💥 Break! มึน', '#ffd25a'); }
+  if (E.brk >= E.brkMax) { E.brk = 0; E.stun = 1; E.brkLock = 1; C.stance = false; ST().breaks++; track('break'); hint('stun', '<b>ศัตรูมึน!</b> ข้ามเทิร์นถัดไปและรับดาเมจ ×1.3 ตีให้หนักเลย'); fx('enemy', '💥 Break! มึน', '#ffd25a'); }
 }
 function basicAtk() {                                          // โจมตีพื้นฐาน: ฟรี ดาเมจเล็ก ได้พลังงาน +1 (1 ครั้ง/เทิร์น)
   if (C.busy) return;
@@ -1293,7 +1302,7 @@ function basicAtk() {                                          // โจมต�
 function ultAdd(n) {
   const was = C.ult;
   C.ult = Math.min(C.ultMax, C.ult + n);
-  if (was < C.ultMax && C.ult >= C.ultMax) fx('player', '🌟 พลังพิเศษเต็ม!', '#ffe27a');
+  if (was < C.ultMax && C.ult >= C.ultMax) { fx('player', '🌟 พลังพิเศษเต็ม!', '#ffe27a'); hint('ult', '<b>พลังพิเศษเต็มแล้ว!</b> กดปุ่ม 🌟 ด้านล่างเพื่อปล่อยท่าไม้ตาย (ไม่เสียพลังงาน) ใช้ได้จำกัดครั้งต่อมอนสเตอร์'); }
 }
 function startCombat(eid) {
   const m = G.mods, d = ENEMIES[eid], t = G.tier || 1;
@@ -1310,6 +1319,7 @@ function startCombat(eid) {
        thorns:0, reflectT:0, curEl:null, boost:false, guard:false, parryK:1, web:false, webNext:false, stance:false, negate:0, parried:false, lungeE:false, stains:[], basicUsed:false, turn:0, played:0, totalPlayed:0, atkCount:0, freeLeft:m.freeCards, dustDone:{},
        ult:Math.min(ultMax, m.startCharge), ultMax, ultLeft:nUlt, ultTotal:nUlt, autoLeft:Math.max(paNum(G.arc.major.id, 'auto'), paNum(G.arc.major.id, 'autoHeavy'), paNum(G.arc.major.id, 'fool'), paNum(G.arc.major.id, 'death')), starUsed:false, sel:null, busy:false, fx:[], shakeE:false, shakeP:false};
   screen = 'combat'; startTurn();
+  maybeCombatTour();
 }
 function startTurn() {
   const m = G.mods;
@@ -1668,6 +1678,7 @@ function winCombat() {
   if (n.t === 'boss') return finishRun(true);
   G.reward = {gold, dust};
   screen = 'reward'; render();
+  hint('dust', '<b>ผงดาว ✨</b> เก็บถาวร ใช้สร้างไพ่ที่ต้องการในสมุดไพ่ (หน้าแรก → 📚)');
 }
 
 // ================= ประตูลึกลับ: เหตุการณ์สุ่ม =================
@@ -1866,6 +1877,124 @@ function showElements() {
     <div class="muted">ธาตุแสง/มืดไม่มีชุดไพ่ Minor (ตอนนี้) ตราแสง/มืดมาจากท่าไม้ตายของ Major ธาตุนั้น</div>
     <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
 }
+// ================= บทเรียนสอนเล่น + ป้ายคำแนะนำ =================
+const tut = () => SAVE.tut || (SAVE.tut = {welcome:false, combat:false, hints:{}});
+const WELCOME = [
+  {ic:'🏰', t:'ยินดีต้อนรับสู่ Knight\'s Deck', d:'ไต่ <b>หอคอย 10 ชั้น</b> แต่ละชั้นมี 4 ด่าน ด่านสุดท้ายคือบอส<br>ชนะแล้วได้ <b>ผงดาว ✨</b> ใช้สร้างไพ่ และ EXP อัปเลเวลตัวละคร<br>แพ้ก็ยังได้ผงดาวและ EXP จากด่านที่ผ่านมาแล้ว'},
+  {ic:'🃏', t:'ไพ่ของคุณ', d:'<b>Major</b> = อาชีพ ให้พลังติดตัวและ <b>ท่าไม้ตาย 🌟</b><br><b>Minor 4 ใบ</b> = ไพ่ที่ใช้ต่อสู้ ติดตั้งแล้วโดยอัตโนมัติ เปลี่ยนได้ที่หน้า 🧙 ตัวละคร<br>ไพ่มี 4 หน้าที่: ⚔️ โจมตี · 🛡️ ป้องกัน · ✨ บัฟ · 🌀 พิเศษ'},
+  {ic:'🎯', t:'ปัดตามจังหวะ', d:'ก่อนศัตรูโจมตี จะมี <b>วงแหวนหดเข้ากรอบ</b> แตะหน้าจอตอนตรงกรอบเพื่อปัด ลดดาเมจและได้โบนัส<br>ไม่ถนัด ปิดได้ที่ ⚙️ ตั้งค่า หรือใช้ปุ่ม 🛡 ตั้งรับ<br>พร้อมแล้ว มาลองสู้กัน! ระหว่างสู้จะมีป้ายแนะนำให้ทีละขั้น'},
+];
+let wPage = 0;
+function showWelcome() {
+  const p = WELCOME[wPage], last = wPage === WELCOME.length - 1;
+  openModal(`<div style="flex:1"></div><div style="font-size:64px">${p.ic}</div><h2>${p.t}</h2>
+    <div class="box" style="text-align:center;font-size:15px;line-height:1.8">${p.d}</div>
+    <div class="steps">${WELCOME.map((_, k) => `<span class="step ${k === wPage ? 'cur' : k < wPage ? 'done' : ''}">${k + 1}</span>`).join('')}</div>
+    <div class="menurow" style="width:100%"><button class="btn sec" onclick="endWelcome()">ข้าม</button>
+      <button class="btn" onclick="${last ? 'endWelcome(true)' : 'wPage++;showWelcome()'}">${last ? '⚔️ เริ่มเลย' : 'ต่อไป ▶'}</button></div><div style="flex:1"></div>`);
+}
+function endWelcome(go) {
+  tut().welcome = true; wPage = 0; persist(); closeModal();
+  if (go) { SAVE.tower.sel = 1; persist(); beginArcana(); }
+}
+function resetTutorial() { SAVE.tut = {welcome:false, combat:false, hints:{}}; persist(); closeModal(); wPage = 0; showWelcome(); }
+// ทัวร์การต่อสู้ครั้งแรก: ไฮไลต์ส่วนต่าง ๆ ทีละขั้น
+const COMBAT_TOUR = [
+  {sel:'.intent', t:'กล่องนี้บอก <b>ท่าที่ศัตรูจะใช้</b><br>"ตอนนี้" = หลังคุณจบเทิร์น · "ถัดไป" = เทิร์นต่อไป ใช้วางแผนล่วงหน้า'},
+  {sel:'.st.wk', t:'ป้ายนี้บอก <b>ธาตุของศัตรู</b> และธาตุที่มันอ่อน (🎯)<br>ไพ่ธาตุที่ชนะ = ดาเมจ ×1.5 · แตะ ❔ เพื่อดูแผนภูมิธาตุ'},
+  {sel:'.bar.brk', t:'หลอด <b>💢 Break</b> เติมได้ด้วยไพ่ ⚔️ โจมตีและ 🌀 พิเศษ<br>เต็มแล้วศัตรู <b>มึน</b> ข้ามเทิร์นและรับดาเมจเพิ่ม'},
+  {sel:'#hand', t:'นี่คือ <b>ไพ่ 4 ใบ</b> ของคุณ<br><b>แตะ 2 ครั้ง</b> หรือ <b>ลากขึ้น</b> เพื่อใช้ · เลขมุมซ้ายบน = พลังงานที่เสีย · ใช้ได้ใบละ 1 ครั้งต่อเทิร์น'},
+  {sel:'.energy', t:'<b>⚡ พลังงาน</b> ฟื้น +3 ทุกเทิร์น เก็บไว้ได้สูงสุด 5<br>ใช้ไพ่ราคาแพงต้องเก็บไว้ก่อน วางแผนให้ดี'},
+  {sel:'.controls', t:'ปุ่มด้านล่าง: <b>🌟 ท่าไม้ตาย</b> (หลอดเต็มแล้วกด) · <b>👊 โจมตีพื้นฐาน</b> ฟรี +1⚡ · <b>🛡 ตั้งรับ</b> ลดดาเมจครึ่งหนึ่ง'},
+  {sel:'.controls .btn:last-child', t:'พร้อมแล้วกด <b>จบเทิร์น</b> ศัตรูจะโจมตี<br>เมื่อมี <b>วงแหวน</b> ขึ้น <b>แตะตอนวงตรงกรอบ</b> เพื่อปัด! ลองดู ✨'},
+];
+function coachTour(steps, done) {
+  let i = 0, hl = null, ov = null;
+  const clean = () => { if (hl && hl.classList) hl.classList.remove('coach-hl'); hl = null; };
+  const finish = () => { clean(); if (ov) ov.remove(); done && done(); };
+  const show = () => {
+    clean();
+    while (i < steps.length && !$(steps[i].sel)) i++;           // ข้ามขั้นที่หาองค์ประกอบไม่เจอ
+    if (i >= steps.length) return finish();
+    const st = steps[i], el = $(st.sel); hl = el; if (el.classList) el.classList.add('coach-hl');
+    let top = false; try { const r = el.getBoundingClientRect(); top = (r.top + r.height / 2) > innerHeight / 2; } catch (e) {}
+    ov.className = 'coach ' + (top ? 'ctop' : 'cbot');
+    ov.innerHTML = `<div class="cbub">${st.t}<div class="cbtns"><button class="link-btn" onclick="coachSkip()">ข้ามบทเรียน</button><span>${i + 1}/${steps.length}</span><button class="btn" style="padding:6px 14px;font-size:14px" onclick="coachNext()">${i === steps.length - 1 ? 'เข้าใจแล้ว ✓' : 'ถัดไป ▶'}</button></div></div>`;
+  };
+  ov = document.createElement('div'); ov.className = 'coach cbot'; app.appendChild(ov);
+  window.coachNext = () => { i++; show(); };
+  window.coachSkip = () => { finish(); };
+  show();
+}
+function maybeCombatTour() {
+  if (tut().combat) return;
+  tut().combat = true; persist();
+  setTimeout(() => { if (screen === 'combat' && C && !C.busy) coachTour(COMBAT_TOUR); }, 350);
+}
+function hint(key, html) {                                      // ป้ายแนะนำครั้งเดียว (ไม่บังคับ)
+  const h = tut().hints; if (h[key]) return; h[key] = 1; persist();
+  const d = document.createElement('div'); d.className = 'hintbox'; d.innerHTML = `💡 ${html}`;
+  d.onclick = () => d.remove(); app.appendChild(d); setTimeout(() => d.remove(), 7000);
+}
+
+// ================= ส่งความเห็น =================
+// ตั้งค่าปลายทาง: สร้าง Google Form แล้วใส่ formUrl (…/formResponse) กับ entry.xxx ของแต่ละช่อง · ถ้าไม่ตั้ง ระบบจะให้คัดลอก/แชร์ข้อความแทน
+const FEEDBACK = {formUrl:'', fields:{rating:'', tags:'', text:'', info:''}, contact:''};
+const FB_TAGS = ['ความยาก', 'จังหวะปัด', 'ไพ่/ธาตุ', 'บอส/ศัตรู', 'หน้าตา/การใช้งาน', 'บั๊ก/ค้าง', 'ข้อเสนอแนะ', 'อื่น ๆ'];
+let FB = {rating:0, tags:[], text:'', stats:true};
+function fbInfo() {
+  const st = ST(), ua = typeof navigator !== 'undefined' ? navigator.userAgent : '', dev = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : 'อื่น ๆ';
+  return `v${GAME_VER} · ${dev} ${typeof innerWidth !== 'undefined' ? innerWidth + 'x' + innerHeight : ''} · Lv${SAVE.hero.level} · ผ่านชั้น ${SAVE.tower.cleared}/${TIERS} · รอบ ${st.runs} ชนะ ${st.wins} · การต่อสู้ ${st.combats} · ปัด ${st.parry.perfect}/${st.parry.good}/${st.parry.miss} (สมบูรณ์/หลบ/พลาด) · ปัดจังหวะ ${parryOn() ? 'เปิด' : 'ปิด'}`;
+}
+function fbRead() { const t = $('#fbText'), c = $('#fbStats'); if (t && typeof t.value === 'string') FB.text = t.value; if (c && typeof c.checked === 'boolean') FB.stats = c.checked; }
+function showFeedback() {
+  openModal(`<h2>💬 ส่งความเห็นถึงผู้พัฒนา</h2>
+    <div class="muted">ความเห็นของคุณช่วยให้เกมดีขึ้นมาก ขอบคุณที่ช่วยทดสอบ 🙏</div>
+    <div class="sect">ให้คะแนนความสนุก</div>
+    <div class="menurow" style="justify-content:center">${[1, 2, 3, 4, 5].map(n => `<button class="pill" style="font-size:24px;${n <= FB.rating ? 'background:rgba(255,210,90,.3)' : ''}" onclick="fbRead();FB.rating=${n};showFeedback()">${n <= FB.rating ? '⭐' : '☆'}</button>`).join('')}</div>
+    <div class="sect">เรื่องที่อยากบอก (เลือกได้หลายข้อ)</div>
+    <div class="menurow" style="flex-wrap:wrap;justify-content:center">${FB_TAGS.map(t => `<button class="pill" style="${FB.tags.includes(t) ? 'background:rgba(230,180,34,.35);border:1px solid #ffd25a' : ''}" onclick="fbRead();fbTag('${t}')">${t}</button>`).join('')}</div>
+    <textarea id="fbText" class="svbox" style="height:110px;font-family:inherit;font-size:14px" maxlength="800" placeholder="เล่าความรู้สึกได้เลย เช่น ตรงไหนสนุก ตรงไหนงง ยากเกินไปไหม เจอบั๊กอะไร ถ้าเป็นบั๊ก ช่วยบอกว่ากำลังทำอะไรอยู่ก่อนเกิด">${FB.text.replace(/</g, '&lt;')}</textarea>
+    <label style="font-size:13px;display:flex;gap:8px;align-items:center"><input type="checkbox" id="fbStats" ${FB.stats ? 'checked' : ''}> แนบข้อมูลเกม (เวอร์ชัน อุปกรณ์ เลเวล สถิติ ไม่มีข้อมูลส่วนตัว)</label>
+    <button class="btn" style="width:100%" onclick="submitFeedback()">📨 ส่งความเห็น</button>
+    <button class="btn sec close" onclick="closeModal()">ปิด</button>`);
+}
+function fbTag(t) { FB.tags = FB.tags.includes(t) ? FB.tags.filter(x => x !== t) : [...FB.tags, t]; showFeedback(); }
+function fbText() {
+  return `[Knight's Deck ความเห็น]\nคะแนน: ${FB.rating ? FB.rating + '/5' : '-'}\nหัวข้อ: ${FB.tags.join(', ') || '-'}\n${FB.text.trim() || '(ไม่มีข้อความ)'}${FB.stats ? '\n---\n' + fbInfo() : ''}`;
+}
+function submitFeedback() {
+  fbRead();
+  if (!FB.rating && !FB.text.trim() && !FB.tags.length) return toast('กรุณาให้คะแนนหรือเขียนความเห็นอย่างน้อย 1 อย่าง');
+  if (Date.now() - (SAVE.fbLast || 0) < 20000) return toast('ส่งถี่เกินไป รอสักครู่นะ');
+  SAVE.fbLast = Date.now(); persist();
+  if (FEEDBACK.formUrl) {                                        // ส่งตรงเข้า Google Form
+    const f = FEEDBACK.fields, body = new URLSearchParams();
+    body.append(f.rating, FB.rating || ''); body.append(f.tags, FB.tags.join(', ')); body.append(f.text, FB.text.trim()); if (FB.stats) body.append(f.info, fbInfo());
+    fetch(FEEDBACK.formUrl, {method:'POST', mode:'no-cors', body}).then(() => feedbackDone(true)).catch(() => feedbackFallback());
+  } else feedbackFallback();
+}
+function feedbackDone(sent) {
+  FB = {rating:0, tags:[], text:'', stats:true};
+  openModal(`<div style="flex:1"></div><div style="font-size:64px">🙏</div><h2>ขอบคุณมากครับ!</h2>
+    <div class="muted">${sent ? 'ส่งความเห็นเรียบร้อยแล้ว' : 'ข้อความถูกคัดลอกแล้ว กรุณานำไปส่งให้ผู้พัฒนา' + (FEEDBACK.contact ? `<br><b>${FEEDBACK.contact}</b>` : '')}</div>
+    <button class="btn" onclick="closeModal()">ปิด</button><div style="flex:1"></div>`);
+}
+function feedbackFallback() {                                    // ไม่มีปลายทาง: คัดลอก/แชร์ข้อความ
+  const text = fbText();
+  openModal(`<h2>💬 ข้อความความเห็น</h2><div class="muted">คัดลอกข้อความนี้ ส่งให้ผู้พัฒนา${FEEDBACK.contact ? ` ที่ <b>${FEEDBACK.contact}</b>` : ''}</div>
+    <textarea id="fbOut" class="svbox" style="height:170px;font-family:inherit;font-size:13px" readonly onclick="this.select()">${text.replace(/</g, '&lt;')}</textarea>
+    <div class="menurow"><button class="btn" onclick="fbCopy()">📋 คัดลอก</button><button class="btn sec" onclick="fbShare()">📤 แชร์</button></div>
+    <button class="btn sec close" onclick="feedbackDone(false)">เสร็จแล้ว</button>`);
+}
+function fbCopy() {
+  const ta = $('#fbOut'), t = ta.value;
+  const fallback = () => { ta.select(); try { document.execCommand('copy'); toast('คัดลอกแล้ว ✅', 'info'); } catch (e) { toast('คัดลอกไม่สำเร็จ ให้กดค้างที่ข้อความ'); } };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(() => toast('คัดลอกแล้ว ✅', 'info')).catch(fallback); } catch (e) {}
+  fallback();
+}
+function fbShare() { const t = $('#fbOut').value; try { if (navigator.share) return navigator.share({text:t}).catch(() => {}); } catch (e) {} fbCopy(); }
+
 function showSettings() {
   openModal(`<h2>⚙️ ตั้งค่า</h2>
     <div class="box" style="text-align:center">เวอร์ชัน ${GAME_VER} · ข้อมูลเก็บในเครื่องนี้เท่านั้น</div>
@@ -1873,6 +2002,8 @@ function showSettings() {
     <button class="btn sec" style="width:100%" onclick="toggleAssist();showSettings()">🤝 โหมดช่วยเหลือการปัด: ${assistOn() ? 'เปิด' : 'ปิด'}</button>
     <div class="muted" style="margin-top:-6px">ช่วงปัดกว้างขึ้น วงแหวนช้าลง แลกกับผลปัดสมบูรณ์ลดลงเล็กน้อย (เหมาะกับสัญญาณหน่วง)</div>
     <button class="btn sec" style="width:100%" onclick="showElements()">🔄 แผนภูมิธาตุ</button>
+    <button class="btn sec" style="width:100%" onclick="showFeedback()">💬 ส่งความเห็น / แจ้งบั๊ก</button>
+    <button class="btn sec" style="width:100%" onclick="resetTutorial()">🎓 ดูบทเรียนสอนเล่นอีกครั้ง</button>
     <button class="btn sec" style="width:100%" onclick="showStats()">📊 สถิติของฉัน</button>
     <button class="btn sec" style="width:100%" onclick="showBackup()">💾 สำรองเซฟ / นำเข้าเซฟ</button>
     <button class="link-btn" onclick="resetAll()">🗑 ล้างข้อมูลเกมทั้งหมด</button>
@@ -2475,14 +2606,16 @@ const SCREENS = {
     <div class="muted">ชั้น ${G.tier} · ไปได้ถึงด่าน ${G.stage}/${STAGES}</div>
     ${earnHTML()}
     <button class="btn" onclick="screen='tower';render()">🏰 กลับหอคอย</button>
-    <button class="btn sec" onclick="screen='title';render()">หน้าแรก</button></div>`,
+    <button class="btn sec" onclick="screen='title';render()">หน้าแรก</button>
+    <button class="link-btn" onclick="showFeedback()">💬 ส่งความเห็น</button></div>`,
 
   victory: () => `<div class="screen" style="justify-content:center">
     <div style="font-size:72px">🏆</div><h1>ผ่านชั้น ${G.tier} แล้ว!</h1>
     <div class="muted">HP เหลือ ${G.hp}/${G.maxHp}${G.tier >= TIERS ? '<br>🎉 ไต่ถึงยอดหอคอยแล้ว!' : ''}</div>
     ${earnHTML()}
     ${G.tier < TIERS ? `<button class="btn" onclick="SAVE.tower.sel=${G.tier + 1};persist();beginArcana()">🏰 ขึ้นชั้น ${G.tier + 1}</button>` : ''}
-    <button class="btn sec" onclick="screen='tower';render()">🏰 กลับหอคอย</button></div>`,
+    <button class="btn sec" onclick="screen='tower';render()">🏰 กลับหอคอย</button>
+    <button class="link-btn" onclick="showFeedback()">💬 ส่งความเห็น</button></div>`,
 };
 
 let lastScreen = null;
@@ -2529,6 +2662,7 @@ if (typeof setInterval === 'function') setInterval(() => {
 }, 1000);
 
 render();
+if (!tut().welcome) setTimeout(showWelcome, 400);
 if (typeof navigator !== 'undefined' && navigator.serviceWorker && typeof location !== 'undefined' && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
