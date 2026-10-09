@@ -381,6 +381,8 @@ h2{text-shadow:0 0 12px rgba(230,180,34,.35)}
 details.box summary{cursor:pointer}
 
 /* ---------- กลุ่ม A: ปุ่มกลับบนสุด / ตัวกรองไพ่ / สัญญาณบอส ---------- */
+.startbar{position:sticky;bottom:-14px;z-index:15;display:flex;gap:8px;justify-content:center;align-self:stretch;margin:0 -14px -14px;padding:10px 14px;background:linear-gradient(rgba(12,10,16,0),rgba(12,10,16,.96) 40%)}
+.backbar button+button{margin-left:8px}
 .backbar{position:sticky;top:-14px;z-index:30;align-self:stretch;margin:-14px -14px 0;padding:7px 10px;background:rgba(21,18,28,.96);border-bottom:1px solid rgba(230,180,34,.25);display:flex;align-items:center}
 .backbar button{font-size:14px;font-weight:700;color:var(--gold);padding:5px 12px;border-radius:16px;background:rgba(255,255,255,.08)}
 .kfbar{display:flex;flex-wrap:wrap;gap:5px;width:100%;justify-content:center}
@@ -744,7 +746,7 @@ const REACT = {
 };
 const reactKey = (a, b) => [a, b].sort().join('+');
 const ENEMIES = {
-  slime:    {name:'สไลม์กรด', art:'🟢', wk:1, bk:12, rh:{T:1500, seq:[1]}, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
+  slime:    {name:'สไลม์เขียว', art:'🟢', wk:1, bk:12, rh:{T:1500, seq:[1]}, hp:[26,30], pattern:[{atk:6},{atk:3,hits:2},{atk:5,block:6}]},
   goblin:   {name:'ก็อบลินโจร', art:'👺', wk:3, bk:12, rh:{T:1150, seq:[1, .8]}, hp:[30,34], pattern:[{atk:4,hits:2},{atk:9},{str:2,block:4}]},
   skeleton: {name:'โครงกระดูกนักรบ', art:'💀', wk:2, bk:14, rh:{T:1250, seq:[1, .9]}, hp:[38,42], pattern:[{atk:7,block:6},{atk:11},{block:12}]},
   orc:      {name:'ออร์คคลั่ง', art:'👹', wk:0, bk:16, rh:{T:1100, seq:[1.25, .75]}, hp:[46,50], pattern:[{str:3},{atk:9},{atk:5,hits:2}]},
@@ -754,9 +756,9 @@ const ENEMIES = {
   wolf:     {name:'หมาป่าป่า', art:'🐺', wk:0, bk:12, rh:{T:1050, seq:[1, .75, .9]}, hp:[32,36], pattern:[{atk:3,hits:3},{atk:7},{str:1,block:3}]},
   bat:      {name:'ค้างคาวถ้ำ', art:'🦇', wk:2, bk:10, tr:['drain'], rh:{T:950, seq:[1, .8]}, hp:[28,32], pattern:[{atk:4,hits:2},{atk:3,hits:2},{atk:2,block:5}]},
   golem:    {name:'โกเลมหิน', art:'🗿', wk:3, bk:20, tr:['shield'], rh:{T:1500, seq:[1.2, .9], kinds:['hold', 'n']}, hp:[54,60], pattern:[{block:14},{atk:15},{atk:6,hits:2}]},
-  snake:    {name:'งูพิษ', art:'🐍', wk:1, bk:12, rh:{T:900, seq:[1, .8, .9]}, hp:[30,34], pattern:[{atk:5,hits:2},{atk:3,block:5},{atk:6,hits:2}]},
+  snake:    {name:'งูเลื้อย', art:'🐍', wk:1, bk:12, rh:{T:900, seq:[1, .8, .9]}, hp:[30,34], pattern:[{atk:5,hits:2},{atk:3,block:5},{atk:6,hits:2}]},
   archer:   {name:'มือธนูกระดูก', art:'🏹', wk:2, bk:14, rh:{T:1200, seq:[1]}, hp:[36,40], pattern:[{atk:6},{atk:12},{block:6,str:1}]},
-  mushroom: {name:'เห็ดพิษ', art:'🍄', wk:3, bk:14, tr:['thorns'], rh:{T:1250, seq:[1, .9]}, hp:[36,40], pattern:[{atk:6},{block:8},{atk:4,hits:2}]},
+  mushroom: {name:'เห็ดหนาม', art:'🍄', wk:3, bk:14, tr:['thorns'], rh:{T:1250, seq:[1, .9]}, hp:[36,40], pattern:[{atk:6},{block:8},{atk:4,hits:2}]},
   wraith:   {name:'ผีสาว', art:'👻', wk:1, bk:14, tr:['regen'], rh:{T:1150, seq:[1, .8], fe:[1], feMin:3}, hp:[34,38], pattern:[{atk:4,hits:2},{atk:8},{block:6}]},
   mage:     {name:'ก็อบลินนักเวท', art:'🧙', wk:0, bk:14, rh:{T:1100, seq:[1, .8], kinds:['n', 'accel']}, hp:[32,36], pattern:[{str:2},{atk:8,hits:2},{atk:12}]},
   // --- ศัตรูพิเศษใหม่ ---
@@ -955,7 +957,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.7.2';
+const GAME_VER = '0.7.3';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -980,7 +982,7 @@ function rollArc(forceMajor) {
   return grant(pick(MINORS.filter(n => tier === 'court' ? n.court : !n.court && (tier === 'high' ? n.rank >= 6 : n.rank <= 5))).id);
 }
 function pull(n, useTicket = false) {
-  if (useTicket) { if (!SAVE.tickets) return toast('ไม่มีตั๋ว'); SAVE.tickets--; }
+  if (useTicket) { if (SAVE.tickets < n) return toast('ตั๋วไม่พอ'); SAVE.tickets -= n; }
   else { if (SAVE.gems < n * PULL_COST) return toast('เพชรไม่พอ'); SAVE.gems -= n * PULL_COST; }
   const res = [];
   for (let i = 0; i < n; i++) res.push(rollArc(n === 10 && i === 9 && !res.some(r => ARC[r.id].major)));
@@ -989,7 +991,7 @@ function pull(n, useTicket = false) {
   res.sort((a, b) => order[tierOf(ARC[a.id])] - order[tierOf(ARC[b.id])]);
   openModal(`<h2>🌟 ผลการสุ่ม</h2><div class="grid">${res.map((r, i) => `<div class="pullres" style="animation-delay:${i * .08}s">
     <div class="tag">${pullTag(r)}</div>${tarotHTML({id:r.id, rev:false, form:1}, null, 'small', `style="animation-delay:${i * .08}s"`)}</div>`).join('')}</div>
-    <button class="btn sec close" onclick="closeModal()">ตกลง</button>`);
+    <div class="muted">แตะที่ไหนก็ได้เพื่อปิด</div><button class="btn sec close" onclick="closeModal()">ตกลง</button>`, true);
 }
 function pullTag(r) {
   const A = ARC[r.id], c = r.before + 1;
@@ -1424,6 +1426,12 @@ function playKit(i) {
   render();
   checkWin();
 }
+function confirmExit() {
+  if (!C || C.busy) return toast('รอสักครู่ แล้วลองใหม่');
+  openModal(`<h2>🚪 ออกจากการต่อสู้?</h2><div class="muted">รอบนี้จะนับเป็นแพ้ แต่ยังได้รางวัลตามที่ผ่านมา</div>
+    <button class="btn sec" onclick="closeModal()">เล่นต่อ</button>
+    <button class="btn" onclick="closeModal();finishRun(false)">ออกจากรอบ</button>`);
+}
 function ultHelp() {
   const major = G.arc.major, M = ARC[major.id], sec = C.ultLeft <= 0, u = sec ? SECOND[M.el] : ULTS[M.el], k = sec ? (major.rev ? 1.3 : 1) : ultK(major);
   toast(`<b>🌟 ${u.name}</b>${sec ? ' (ท่ารอง)' : ''}<br>${u.d(k)}<br><small>ชาร์จ ${C.ult}/${C.ultMax} · ใช้ไพ่ธาตุ ${EL[M.el].ic} ชาร์จ ×2${sec ? '' : ` · เหลือ ${C.ultLeft}/${C.ultTotal} ครั้ง`}</small>`, 'info');
@@ -1797,7 +1805,7 @@ function swapDo(i, id, rev) {
 }
 
 // ================= โมดัล =================
-function openModal(html) { closeModal(); const m = document.createElement('div'); m.className = 'modal'; m.id = 'modal'; m.innerHTML = html; app.appendChild(m); }
+function openModal(html, tapClose = false) { closeModal(); const m = document.createElement('div'); m.className = 'modal'; m.id = 'modal'; m.innerHTML = html; if (tapClose) { m.onclick = closeModal; m.style.cursor = 'pointer'; } app.appendChild(m); }
 function closeModal() { const m = $('#modal'); if (m) m.remove(); }
 function showKitGallery() {
   openModal(`<h2>📖 ไพ่ต่อสู้ (Minor 56 ใบ)</h2>
@@ -2292,6 +2300,7 @@ function doorHTML(d, i) {
 }
 function selectTier(t) {
   if (t > SAVE.tower.cleared + 1) return toast(`🔒 ต้องชนะบอสชั้น ${t - 1} ก่อน`);
+  if (SAVE.tower.sel === t && screen === 'tower') return startTier();       // แตะชั้นที่เลือกอยู่ซ้ำ = เข้าเลย
   SAVE.tower.sel = t; persist(); render();
 }
 function startTier() { SAVE.tower.sel = Math.min(SAVE.tower.sel, SAVE.tower.cleared + 1, TIERS); persist(); beginArcana(); }
@@ -2350,10 +2359,10 @@ function devExp(n) { const ups = addExp(n); persist(); render(); toast(`+${n} EX
 function devUnlockTiers() { SAVE.tower.cleared = TIERS; persist(); render(); }
 
 // ================= หน้าจอ =================
-const topbar = () => `<div class="topbar">
+const topbar = (inCombat = false) => `<div class="topbar">
   <span class="pill">❤ ${G.hp}/${G.maxHp}</span><span class="pill">💰 ${G.gold}</span>
   <span class="pill">🏰 ${G.tier} · ${G.stage}/${STAGES}</span>
-  <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button></div>
+  <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button>${inCombat ? '<button class="pill" onclick="event.stopPropagation();confirmExit()">🚪</button>' : ''}</div>
   ${G.arc ? `<button class="arcbar" onclick="event.stopPropagation();showMyArcana()">🔮
     ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].major ? ARC[e.id].icon : ROLE[ARC[e.id].role].ic}</span>`).join('')}
     <span style="opacity:.7">แตะเพื่อดูไพ่</span></button>` : ''}
@@ -2459,6 +2468,7 @@ const SCREENS = {
     <div class="muted">นับ pity: ${SAVE.pity}/50 ครั้ง</div>
     <div class="svc">
       <button onclick="pull(1,true)" ${SAVE.tickets ? '' : 'disabled'}>🎫 สุ่ม 1<br><small>ใช้ตั๋ว 1 ใบ</small></button>
+      <button onclick="pull(10,true)" ${SAVE.tickets >= 10 ? '' : 'disabled'}>🎫 สุ่ม 10<br><small>ใช้ตั๋ว 10 ใบ</small></button>
       <button onclick="pull(1)">💎 สุ่ม 1<br><small>${PULL_COST} เพชร</small></button>
       <button onclick="pull(10)">💎 สุ่ม 10<br><small>${PULL_COST * 10} เพชร</small></button>
     </div>
@@ -2574,7 +2584,7 @@ const SCREENS = {
 
   combat: () => {
     const M = ARC[G.arc.major.id], sec = C.ultLeft <= 0, u = sec ? SECOND[M.el] : ULTS[M.el], ready = C.ult >= C.ultMax;
-    return `${topbar()}
+    return `${topbar(true)}
     <div class="enemy-zone sc-${E.el} ${E.stun ? 'stunned' : ''}" onclick="if(C.sel!==null){C.sel=null;render()}">
       <div class="scene-fx"></div>
       <div class="intent">${intentText()}</div>
@@ -2671,18 +2681,20 @@ const SCREENS = {
     <button class="link-btn" onclick="showFeedback()">💬 ส่งความเห็น</button></div>`,
 };
 
-const BACKS = {hero:"screen='title';render()", shrine:"screen='title';render()", book:"screen='title';render()", forge:"screen='title';render()", quests:"screen='title';render()", tower:"screen='title';render()",
+let navStack = [], navBack = false;                               // ประวัติหน้าเมนู: ปุ่มกลับย้อนทีละหน้า
+function goBack() { screen = navStack.pop() || 'title'; navBack = true; render(); }
+const BACKS = {hero:'goBack()', shrine:'goBack()', book:'goBack()', forge:'goBack()', quests:'goBack()', tower:'goBack()',
   amulets:() => "screen=amuBack;render()", arcana:"screen='tower';render()"};
 let lastScreen = null;
 let scrollReset = false;                                          // true = วาดใหม่แล้วเลื่อนกลับบนสุด (เช่นสลับแท็บ)
 function render() {
   const oldSc = app.querySelector('.screen'), keepTop = (screen === lastScreen && !scrollReset && oldSc) ? oldSc.scrollTop : 0;
   scrollReset = false;
-  if (screen !== lastScreen) { lastScreen = screen; app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); setTimeout(() => app.classList.remove('enter'), 320); }
+  if (screen !== lastScreen) { if (screen === 'title') navStack = []; else if (!navBack && lastScreen && (lastScreen === 'title' || BACKS[lastScreen]) && BACKS[screen]) { navStack.push(lastScreen); if (navStack.length > 20) navStack.shift(); } navBack = false; lastScreen = screen; app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); setTimeout(() => app.classList.remove('enter'), 320); }
   app.innerHTML = SCREENS[screen]();
   if (keepTop) { const sc = app.querySelector('.screen'); if (sc) sc.scrollTop = keepTop; }
   const bk = BACKS[screen];
-  if (bk) { const sc = app.querySelector('.screen'); if (sc) sc.insertAdjacentHTML('afterbegin', `<div class="backbar"><button onclick="${typeof bk === 'function' ? bk() : bk}">‹ กลับ</button></div>`); }
+  if (bk) { const sc = app.querySelector('.screen'); if (sc) sc.insertAdjacentHTML('afterbegin', `<div class="backbar"><button onclick="${typeof bk === 'function' ? bk() : bk}">‹ กลับ</button><button onclick="screen='title';render()">🏠 หน้าหลัก</button></div>`); }
   if (screen === 'combat' && C) { bindHand(); flushFx(); C.shakeE = C.shakeP = C.lungeE = false; }
 }
 
