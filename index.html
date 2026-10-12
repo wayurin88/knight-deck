@@ -457,6 +457,19 @@ details.box summary{cursor:pointer}
   .bar{height:14px}
   .estage{min-height:80px}
 }
+
+/* ---------- ไอคอนภาพ (art/ui/icons) ---------- */
+.ic{width:1.2em;height:1.2em;vertical-align:-.22em;object-fit:contain;display:inline-block;pointer-events:none;-webkit-user-drag:none}
+.chip .ic{width:22px;height:22px}.pill .ic{width:18px;height:18px}.st .ic{width:16px;height:16px}
+.energy .ic{width:22px;height:22px;margin-right:1px}.ultbtn .ic{width:20px;height:20px}
+.basicbtn .ic{width:28px;height:28px;display:block;margin:0 auto 1px}
+.kcard .krole .ic{width:16px;height:16px}.stains .sd .ic{width:18px;height:18px}
+.arcbar .ic{width:18px;height:18px}.bar span .ic{width:14px;height:14px;vertical-align:-.2em}.brkn .ic{width:13px;height:13px}
+
+.ultbtn{white-space:nowrap}.ultbtn .ic{width:18px;height:18px;vertical-align:-.28em}
+.ultbtn .uhelp{padding:0 5px}
+.pill .ic{width:17px;height:17px}
+.bar.hp>span .ic,.bar.ehp>span .ic{width:13px;height:13px}
 </style>
 </head>
 <body>
@@ -537,6 +550,9 @@ const EL = {
   light: {th:'แสง', c:'#ffe27a', ic:'✨'},
   dark:  {th:'มืด', c:'#a07cf0', ic:'🌑'},
 };
+const ic = (n, cls = '') => `<img class="ic ${cls}" src="art/ui/icons/${n}.webp" alt="" draggable="false">`;   // ไอคอนภาพ (art/ui/icons) ชื่อธาตุ/บทบาทตรงกับชื่อไฟล์
+const TRAIT_IC = {drain:'drain', thorns:'thorns', regen:'regen', shield:'block', web:'web'};
+const traitIc = t => TRAIT_IC[t] ? ic(TRAIT_IC[t]) : TRAIT[t][0].split(' ')[0];
 const EL4 = ['fire', 'water', 'air', 'earth'];                    // ธาตุของชุดไพ่ Minor (แสง/มืดเป็นธาตุของ Major ศัตรู ท่าไม้ตาย และตราธาตุ)
 // ข้อเสียเมื่อไพ่ออกมา "กลับหัว"
 const BAD = {
@@ -927,7 +943,7 @@ function kitCardHTML(c, i) {
   const desc = A.ops.map(op => `<div>${opText(op, k, c.rev, mastTier(c.id))}</div>`).join('');
   C.curEl = null; C.boost = false;
   return `<div class="kcard ${hit ? 'wkhit' : ''} ${c.used ? 'used' : ''} ${cant ? 'cant' : ''} ${C.sel === i ? 'sel' : ''} ${c.rev ? 'isrev' : ''}" style="--ec:${EL[A.el].c};--fa:${((i - (C.kit.length - 1) / 2) * 3).toFixed(2)}deg;--fl:${(Math.pow(i - (C.kit.length - 1) / 2, 2) * 2).toFixed(1)}px;--di:${i}" data-i="${i}">
-    <div class="cost">${cost}</div><div class="krole">${ROLE[A.role].ic}</div>
+    <div class="cost">${cost}</div><div class="krole">${ic(A.role)}</div>
     <div class="kname">${A.sk}</div>
     <div class="kart ${ART.ok.has(c.id) ? 'hasart' : ''}">${A.icon}<small>${A.no}</small>${artImg(c.id, 'kimg')}</div>
     <div class="kdesc">${desc}</div>
@@ -1019,7 +1035,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 if (!SAVE.amu) SAVE.amu = newAmu();
 if (!SAVE.hero) SAVE.hero = newHero();
 if (!SAVE.tower) SAVE.tower = {cleared:0, sel:1};
-const GAME_VER = '0.8.0';
+const GAME_VER = '0.8.1';
 const newStats = () => ({bosses:{}, first:Date.now(), last:Date.now(), runs:0, wins:0, combats:0, turns:0, byTier:{}, deathStage:{}, parry:{perfect:0, good:0, miss:0}, ults:0, breaks:0, reacts:0});
 if (!SAVE.stats) SAVE.stats = newStats();
 const ST = () => SAVE.stats || (SAVE.stats = newStats());
@@ -1154,7 +1170,7 @@ function showAmu(id, t) {
 }
 function showAmuInfo(id, t) { toast(`<b>${AMU[id].icon} ${AMU[id].name}</b> · ${TROM[t]}<br>${amuText(id, t)}`, 'info'); }
 const equipText = () => SAVE.amu.equip.filter(Boolean).map(e => `${AMU[e.id].icon} ${AMU[e.id].name} ${TROM[e.tier]}`).join(' · ') || 'ยังไม่ได้ใส่';
-const walletHTML = () => `<div class="wallet"><span class="pill">💎 ${SAVE.gems}</span><span class="pill">🎫 ${SAVE.tickets}</span><span class="pill">✨ ผง ${SAVE.dust}</span><span class="pill">🪙 ${SAVE.amu.coins}</span></div>`;
+const walletHTML = () => `<div class="wallet"><span class="pill">${ic('gem')} ${SAVE.gems}</span><span class="pill">${ic('ticket')} ${SAVE.tickets}</span><span class="pill">${ic('dust')} ผง ${SAVE.dust}</span><span class="pill">🪙 ${SAVE.amu.coins}</span></div>`;
 function ctile(A) {
   const n = SAVE.owned[A.id] || 0, lv = levelOf(Math.max(1, n)).at;
   return `<button class="ctile ${n ? 'l' + lv : 'none'}" style="--ec:${EL[A.el].c}" onclick="showArcDetail('${A.id}')">
@@ -2421,11 +2437,11 @@ function devExp(n) { const ups = addExp(n); persist(); render(); toast(`+${n} EX
 function devUnlockTiers() { SAVE.tower.cleared = TIERS; persist(); render(); }
 
 // ================= หน้าจอ =================
-const eqRow = () => (G.arc || (G.amu && G.amu.length)) ? `<div class="arcbar one">${G.arc ? `<button class="eqb" onclick="event.stopPropagation();showMyArcana()">🔮 ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].major ? ARC[e.id].icon : ROLE[ARC[e.id].role].ic}</span>`).join('')}</button>` : ''}${G.amu && G.amu.length ? `<span class="eqsep">💍</span>${G.amu.map(e => `<button class="ai" onclick="event.stopPropagation();showAmuInfo('${e.id}',${e.tier})">${AMU[e.id].icon}<small style="font-size:9px;color:${TCOLOR[e.tier]}">${TROM[e.tier]}</small></button>`).join('')}` : ''}</div>` : '';
+const eqRow = () => (G.arc || (G.amu && G.amu.length)) ? `<div class="arcbar one">${G.arc ? `<button class="eqb" onclick="event.stopPropagation();showMyArcana()">🔮 ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].major ? ARC[e.id].icon : ic(ARC[e.id].role)}</span>`).join('')}</button>` : ''}${G.amu && G.amu.length ? `<span class="eqsep">💍</span>${G.amu.map(e => `<button class="ai" onclick="event.stopPropagation();showAmuInfo('${e.id}',${e.tier})">${AMU[e.id].icon}<small style="font-size:9px;color:${TCOLOR[e.tier]}">${TROM[e.tier]}</small></button>`).join('')}` : ''}</div>` : '';
 const topbar = (inCombat = false) => `<div class="topbar">
-  <span class="pill">❤ ${G.hp}/${G.maxHp}</span><span class="pill">💰 ${G.gold}</span>
-  <span class="pill">🏰 ${G.tier} · ${G.stage}/${STAGES}</span>
-  <button class="pill" onclick="event.stopPropagation();showGuide()">❔</button>${inCombat ? '<button class="pill" onclick="event.stopPropagation();confirmExit()">🚪</button>' : ''}</div>
+  <span class="pill">${ic('heart')} ${G.hp}/${G.maxHp}</span><span class="pill">${ic('coin')} ${G.gold}</span>
+  <span class="pill">${ic('tower')} ${G.tier} · ${G.stage}/${STAGES}</span>
+  <button class="pill" onclick="event.stopPropagation();showGuide()">${ic('help')}</button>${inCombat ? `<button class="pill" onclick="event.stopPropagation();confirmExit()">${ic('exit')}</button>` : ''}</div>
   ${!inCombat && G.arc ? `<button class="arcbar" onclick="event.stopPropagation();showMyArcana()">🔮
     ${[G.arc.major, ...G.arc.minors].map(e => `<span class="ai ${e.rev ? 'rev' : ''}">${ARC[e.id].major ? ARC[e.id].icon : ROLE[ARC[e.id].role].ic}</span>`).join('')}
     <span style="opacity:.7">แตะเพื่อดูไพ่</span></button>` : ''}
@@ -2655,23 +2671,23 @@ const SCREENS = {
       ${C.stance ? `<div class="stance s" onclick="event.stopPropagation();toast('ไพ่โจมตีใบแรกจะถูกปัดและโดนสวนกลับ · ทะลุได้: ไพ่ธาตุที่ชนะบอส · ท่าไม้ตาย · ทำให้มึน · ล่อด้วย 👊','info')">🛡 ตั้งท่าปัด!</div>` : ''}
       <div class="estage">
         <div class="ecol L">
-          <button class="chip st wk" onclick="event.stopPropagation();showElements()">${EL[E.el].ic}<small>ธาตุ${EL[E.el].th}</small></button>
-          <button class="chip good" onclick="event.stopPropagation();toast('🎯 อ่อนต่อธาตุ${EL[E.wk].th} · ไพ่ธาตุนี้ดาเมจ ×${WEAK_K}','info')">🎯${EL[E.wk].ic}<small>×${WEAK_K}</small></button>
-          ${E.res ? `<button class="chip bad" onclick="event.stopPropagation();toast('⬇ ทนธาตุ${EL[E.res].th} · ไพ่ธาตุนี้ดาเมจ ×${RES_K}','info')">⬇${EL[E.res].ic}<small>×${RES_K}</small></button>` : ''}
-          ${E.tr.map(t => `<button class="chip" onclick="event.stopPropagation();toast('<b>${TRAIT[t][0]}</b><br>${TRAIT[t][1]}','info')">${TRAIT[t][0].split(' ')[0]}</button>`).join('')}
+          <button class="chip st wk" onclick="event.stopPropagation();showElements()">${ic(E.el)}<small>ธาตุ${EL[E.el].th}</small></button>
+          <button class="chip good" onclick="event.stopPropagation();toast('🎯 อ่อนต่อธาตุ${EL[E.wk].th} · ไพ่ธาตุนี้ดาเมจ ×${WEAK_K}','info')">${ic(E.wk)}<small>▲×${WEAK_K}</small></button>
+          ${E.res ? `<button class="chip bad" onclick="event.stopPropagation();toast('⬇ ทนธาตุ${EL[E.res].th} · ไพ่ธาตุนี้ดาเมจ ×${RES_K}','info')">${ic(E.res)}<small>▼×${RES_K}</small></button>` : ''}
+          ${E.tr.map(t => `<button class="chip" onclick="event.stopPropagation();toast('<b>${TRAIT[t][0]}</b><br>${TRAIT[t][1]}','info')">${traitIc(t)}</button>`).join('')}
         </div>
         <div class="enemy-stage ${E.img ? 'eimgs' : ''}"><div class="enemy-art ${C.stance ? 'guarding' : ''} ${C.shakeE ? 'shake' : ''} ${C.lungeE ? 'lunge' : ''}" id="enemyEl" style="--ec:${EL[E.el].c}">${E.img ? `<img class="eimg" src="${E.img}" alt="">` : E.art}</div><div class="ground"></div></div>
         <div class="ecol R">
-          <div class="stains">${[0, 1].map(i => C.stains[i] ? `<span class="sd" style="--ec:${EL[C.stains[i]].c}">${EL[C.stains[i]].ic}</span>` : `<span class="sd" style="--ec:#555;opacity:.4">·</span>`).join('')}</div>
+          <div class="stains">${[0, 1].map(i => C.stains[i] ? `<span class="sd" style="--ec:${EL[C.stains[i]].c}">${ic(C.stains[i])}</span>` : `<span class="sd" style="--ec:#555;opacity:.4">·</span>`).join('')}</div>
           ${C.stains.length === 2 ? (C.stains[0] === C.stains[1]
-            ? `<button class="chip good rx2" onclick="event.stopPropagation();toast('✨ ไพ่ธาตุนี้ใบถัดไป +25%','info')">✨<small>+25%</small></button>`
+            ? `<button class="chip good rx2" onclick="event.stopPropagation();toast('✨ ไพ่ธาตุนี้ใบถัดไป +25%','info')">${ic('buf')}<small>+25%</small></button>`
             : (R => `<button class="chip good rx2" onclick="event.stopPropagation();toast('<b>${R.ic} ${R.n}</b><br>${R.d} (ใช้ไพ่ใบถัดไป)','info')">${R.ic}<small>${R.n}</small></button>`)(REACT[reactKey(C.stains[0], C.stains[1])])) : ''}
-          <div class="brkwrap"><div class="bar brk vert"><i style="--p:${E.brk / E.brkMax * 100}%"></i></div><small class="brkn">${E.stun ? '😵 มึน' : `💢${E.brk}/${E.brkMax}`}</small></div>
-          ${E.ward > 0 ? `<span class="chip blk">🔮<small>${E.ward}</small></span>` : ''}
-          ${E.block ? `<span class="chip blk">🛡<small>${E.block}</small></span>` : ''}
-          ${E.str ? `<span class="chip">💪<small>${E.str}</small></span>` : ''}
-          ${E.vuln ? `<span class="chip bad">🎯<small>${E.vuln}</small></span>` : ''}
-          ${E.weak ? `<span class="chip bad">🥀<small>${E.weak}</small></span>` : ''}
+          <div class="brkwrap"><div class="bar brk vert"><i style="--p:${E.brk / E.brkMax * 100}%"></i></div><small class="brkn">${E.stun ? ic('stun') + ' มึน' : ic('brk') + E.brk + '/' + E.brkMax}</small></div>
+          ${E.ward > 0 ? `<span class="chip blk">${ic('ward')}<small>${E.ward}</small></span>` : ''}
+          ${E.block ? `<span class="chip blk">${ic('block')}<small>${E.block}</small></span>` : ''}
+          ${E.str ? `<span class="chip">${ic('str')}<small>${E.str}</small></span>` : ''}
+          ${E.vuln ? `<span class="chip bad">${ic('vuln')}<small>${E.vuln}</small></span>` : ''}
+          ${E.weak ? `<span class="chip bad">${ic('weak')}<small>${E.weak}</small></span>` : ''}
         </div>
       </div>
       <div class="ename">${E.name} ${E.tag ? `<small>· ${E.tag}</small>` : ''}</div>
@@ -2681,27 +2697,27 @@ const SCREENS = {
       <button class="mini up" onclick="playKit(C.sel)" ${c.used || cost > C.energy ? 'disabled style="opacity:.4"' : ''}>▲ ใช้ไพ่ (⚡${cost})</button>`; })()
       : `<span class="pillc">🃏 ใช้แล้ว ${C.played}/${C.kit.length}</span><span class="tip">แตะการ์ด 2 ครั้ง หรือลากขึ้น = ใช้ · ใบละ 1 ครั้ง/เทิร์น</span>`}</div>
     <div class="player-zone">
-      <div class="energy">⚡${C.energy}<small style="font-size:11px">/${C.maxE}</small></div>
+      <div class="energy">${ic('energy')}${C.energy}<small style="font-size:11px">/${C.maxE}</small></div>
       <div class="portrait" style="--ec:${EL[M.el].c}">🛡️<i>${M.icon}</i></div>
       <div class="pinfo ${C.shakeP ? 'shake' : ''}" id="playerEl">
-        <div class="bar hp"><i style="width:${G.hp / G.maxHp * 100}%"></i><span>❤ ${G.hp}/${G.maxHp}</span></div>
+        <div class="bar hp"><i style="width:${G.hp / G.maxHp * 100}%"></i><span>${ic('heart')} ${G.hp}/${G.maxHp}</span></div>
         <div class="statuses">
-          ${C.block ? `<span class="st blk">🛡 เกราะ ${C.block}</span>` : ''}
-          ${C.str ? `<span class="st">💪 พลัง ${C.str}</span>` : ''}
-          ${C.strT ? `<span class="st">💪 +${C.strT} เทิร์นนี้</span>` : ''}
-          ${C.thorns ? `<span class="st">⛓️ หนาม ${C.thorns}</span>` : ''}
+          ${C.block ? `<span class="st blk">${ic('block')} เกราะ ${C.block}</span>` : ''}
+          ${C.str ? `<span class="st">${ic('str')} พลัง ${C.str}</span>` : ''}
+          ${C.strT ? `<span class="st">${ic('str')} +${C.strT} เทิร์นนี้</span>` : ''}
+          ${C.thorns ? `<span class="st">${ic('thorns')} หนาม ${C.thorns}</span>` : ''}
           ${C.reflectT ? `<span class="st">⛓️ สะท้อน ${C.reflectT} เทิร์นนี้</span>` : ''}
-          ${C.guard ? `<span class="st blk">🛡 ตั้งรับ (ดาเมจ −50%)</span>` : ''}
-          ${C.web ? `<span class="st">🕸 ไพ่ใบแรก +1⚡</span>` : ''}
+          ${C.guard ? `<span class="st blk">${ic('guard')} ตั้งรับ (ดาเมจ −50%)</span>` : ''}
+          ${C.web ? `<span class="st">${ic('web')} ไพ่ใบแรก +1${ic('energy')}</span>` : ''}
         </div>
       </div>
     </div>
     <div class="hand ${C.dealFx ? 'deal' : ''}" id="hand">${C.kit.map(kitCardHTML).join('')}</div>
     <div class="controls">
-      <button class="ultbtn ${ready ? 'ready' : ''}" style="--ec:${EL[M.el].c}" onclick="useUlt()">🌟 ${u.name} <span class="uhelp" onclick="event.stopPropagation();ultHelp()">❔</span><small>${ready ? 'พร้อมใช้! แตะเพื่อปล่อย' : `ชาร์จ ${C.ult}/${C.ultMax}`} · ${sec ? 'ท่ารอง' : `เหลือ ${C.ultLeft}/${C.ultTotal}`}</small>
+      <button class="ultbtn ${ready ? 'ready' : ''}" style="--ec:${EL[M.el].c}" onclick="useUlt()">${ic('ult')} ${u.name} <span class="uhelp" onclick="event.stopPropagation();ultHelp()">❔</span><small>${ready ? 'พร้อมใช้! แตะเพื่อปล่อย' : `ชาร์จ ${C.ult}/${C.ultMax}`} · ${sec ? 'ท่ารอง' : `เหลือ ${C.ultLeft}/${C.ultTotal}`}</small>
         <i style="width:${C.ult / C.ultMax * 100}%"></i></button>
-      <button class="basicbtn" onclick="basicAtk()" ${C.basicUsed ? 'disabled' : ''}>👊<small>ฟรี<br>+1⚡</small></button>
-      <button class="basicbtn" onclick="guard()" ${C.guard || C.energy < 1 ? 'disabled' : ''}>🛡<small>ตั้งรับ<br>−1⚡</small></button>
+      <button class="basicbtn" onclick="basicAtk()" ${C.basicUsed ? 'disabled' : ''}>${ic('basic')}<small>ฟรี<br>+1⚡</small></button>
+      <button class="basicbtn" onclick="guard()" ${C.guard || C.energy < 1 ? 'disabled' : ''}>${ic('guard')}<small>ตั้งรับ<br>−1⚡</small></button>
       <button class="btn" onclick="endTurn()" ${C.busy ? 'disabled' : ''}>จบเทิร์น</button>
     </div>`;
   },
